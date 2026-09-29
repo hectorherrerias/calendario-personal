@@ -48,7 +48,7 @@
   <header class="sticky top-0 z-30 glass-header safe-top">
     <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
       
-      <!-- Brand & Clock -->
+      <!-- Brand & Clean Live Date Clock -->
       <div class="flex items-center gap-2.5 sm:gap-3">
         <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
           <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,10 +60,10 @@
             <h1 class="text-sm sm:text-base lg:text-lg font-bold tracking-tight text-white">Calendario</h1>
             <span class="text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">AutoPush</span>
           </div>
-          <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
-            <span id="live-clock" class="font-mono text-slate-300">--:--:--</span>
-            <span class="text-slate-600 hidden sm:inline">•</span>
-            <span id="header-tz" class="text-[10px] text-slate-400 font-mono hidden sm:inline">Europe/Madrid</span>
+          <!-- Live Date and Time Badge -->
+          <div class="flex items-center gap-1.5 text-[11px] text-slate-300">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-dot"></span>
+            <span id="live-clock" class="text-[11px] sm:text-xs">Cargando fecha y hora...</span>
           </div>
         </div>
       </div>
@@ -106,27 +106,43 @@
     <section id="view-calendar" class="space-y-4 sm:space-y-6">
       
       <!-- Calendar Controls & Navigation Bar -->
-      <div class="glass-panel rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-2 shadow-lg">
-        <div class="flex items-center gap-2 sm:gap-3">
-          <h2 id="current-month-title" class="text-base sm:text-xl font-extrabold text-white capitalize tracking-tight">
-            Septiembre 2026
-          </h2>
-          <button onclick="goToToday()" class="px-2 py-1 rounded-lg text-[11px] sm:text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 transition-all active:scale-95">
-            Hoy
-          </button>
+      <div class="glass-panel rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+        <div class="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
+          <div class="flex items-center gap-2">
+            <h2 id="current-month-title" class="text-base sm:text-xl font-extrabold text-white capitalize tracking-tight">
+              Septiembre 2026
+            </h2>
+            <button onclick="goToToday()" class="px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 transition-all active:scale-95 flex items-center gap-1">
+              <span>🎯</span>
+              <span>Ir a Hoy</span>
+            </button>
+          </div>
+
+          <!-- Mobile Prev/Next -->
+          <div class="flex items-center gap-1.5 sm:hidden">
+            <button onclick="prevMonth()" class="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 active:scale-90" title="Mes anterior">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <button onclick="nextMonth()" class="p-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 active:scale-90" title="Mes siguiente">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          </div>
         </div>
 
-        <div class="flex items-center gap-1.5 sm:gap-2">
-          <button onclick="prevMonth()" class="p-2 sm:p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all active:scale-90" title="Mes anterior">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button onclick="nextMonth()" class="p-2 sm:p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all active:scale-90" title="Mes siguiente">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+        <!-- Today Summary & Desktop Prev/Next -->
+        <div class="flex items-center justify-between sm:justify-end gap-2 text-xs">
+          <div id="today-banner-info" class="text-[11px] sm:text-xs text-slate-400 bg-slate-900/80 px-3 py-1 rounded-xl border border-slate-800/80">
+            <span id="today-badge-text">Hoy es ...</span>
+          </div>
+
+          <div class="hidden sm:flex items-center gap-1.5">
+            <button onclick="prevMonth()" class="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all active:scale-90" title="Mes anterior">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <button onclick="nextMonth()" class="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all active:scale-90" title="Mes siguiente">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7" /></svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -395,7 +411,7 @@
         <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/70 border border-slate-800">
           <div>
             <span class="text-xs font-bold text-slate-200">Todo el día</span>
-            <p id="allday-hint" class="text-[10px] text-slate-400">Aviso a la hora exacta fijada.</p>
+            <p id="allday-hint" class="text-[10px] text-slate-400">Aviso a las 08:00 AM del día del evento.</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="event-allday" class="sr-only peer">
@@ -406,11 +422,11 @@
         <!-- Date & Time Row -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Inicio *</label>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Fecha y Hora de Inicio *</label>
             <input type="datetime-local" id="event-start" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Fin (Opcional)</label>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Fecha y Hora de Fin (Opcional)</label>
             <input type="datetime-local" id="event-end" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
           </div>
         </div>

@@ -53,7 +53,6 @@ function showToast(message, type = 'success') {
 
   container.appendChild(toast);
   
-  // Animate in
   requestAnimationFrame(() => {
     toast.classList.remove('-translate-y-2', 'opacity-0');
   });
@@ -62,6 +61,35 @@ function showToast(message, type = 'success') {
     toast.classList.add('-translate-y-2', 'opacity-0');
     setTimeout(() => toast.remove(), 280);
   }, 3500);
+}
+
+// Universal Date Parser Helper (prevents timezone shifts across browsers)
+function parseDate(dateInput) {
+  if (!dateInput) return new Date();
+  if (dateInput instanceof Date) return dateInput;
+
+  if (typeof dateInput === 'string') {
+    let s = dateInput.trim();
+    if (s.length === 10) {
+      const [y, m, d] = s.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+    // "YYYY-MM-DDTHH:MM:SS" or "YYYY-MM-DDTHH:MM" without Z or offset
+    if (!s.endsWith('Z') && !s.includes('+') && !/[0-9]-[0-9]{2}:[0-9]{2}$/.test(s)) {
+      const parts = s.split(/[-T:]/);
+      if (parts.length >= 5) {
+        return new Date(
+          parseInt(parts[0], 10),
+          parseInt(parts[1], 10) - 1,
+          parseInt(parts[2], 10),
+          parseInt(parts[3], 10),
+          parseInt(parts[4], 10),
+          parts[5] ? parseInt(parts[5], 10) : 0
+        );
+      }
+    }
+  }
+  return new Date(dateInput);
 }
 
 // API Calls
@@ -211,9 +239,6 @@ function switchView(viewName) {
 function updateSettingsUI() {
   if (!state.settings) return;
   const s = state.settings;
-  
-  const tzDisplay = document.getElementById('header-tz');
-  if (tzDisplay) tzDisplay.textContent = s.timezone || 'Europe/Madrid';
 
   const stTz = document.getElementById('setting-tz-val');
   const stNtfy = document.getElementById('setting-ntfy-val');
@@ -245,11 +270,11 @@ function openEventModal(eventData = null, defaultDateStr = null) {
     document.getElementById('event-allday').checked = eventData.all_day || false;
 
     if (eventData.start_time) {
-      const d = new Date(eventData.start_time);
+      const d = parseDate(eventData.start_time);
       document.getElementById('event-start').value = formatForDateTimeInput(d);
     }
     if (eventData.end_time) {
-      const d = new Date(eventData.end_time);
+      const d = parseDate(eventData.end_time);
       document.getElementById('event-end').value = formatForDateTimeInput(d);
     }
   } else {
@@ -300,7 +325,7 @@ function formatForDateTimeInput(date) {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-// Form Submit Handler
+// Form Submit Handler (Sends clean local ISO without timezone degradation)
 async function handleEventFormSubmit(e) {
   e.preventDefault();
   
@@ -322,6 +347,12 @@ async function handleEventFormSubmit(e) {
     return;
   }
 
+  // Preserve exact local time (e.g. 2026-09-29T20:00:00)
+  const formatIsoLocal = (str) => {
+    if (!str) return null;
+    return str.length === 16 ? `${str}:00` : str;
+  };
+
   const payload = {
     title,
     description,
@@ -329,14 +360,14 @@ async function handleEventFormSubmit(e) {
     category,
     color,
     all_day: allDay,
-    start_time: new Date(startStr).toISOString(),
-    end_time: endStr ? new Date(endStr).toISOString() : null
+    start_time: formatIsoLocal(startStr),
+    end_time: formatIsoLocal(endStr)
   };
 
   try {
     if (state.editingEventId) {
       await apiPut(`/events/${state.editingEventId}`, payload);
-      showToast('Evento actualizado', 'success');
+      showToast('Evento actualizado correctamente', 'success');
     } else {
       await apiPost('/events', payload);
       showToast('Evento creado y alertas programadas', 'success');
@@ -389,20 +420,40 @@ async function confirmDeleteEvent(eventId, eventTitle) {
   }
 }
 
-// Live Clock in Header
+// Live Clock & Current Day Widget (Formatted cleanly in Spanish)
 function startClock() {
   const clockEl = document.getElementById('live-clock');
-  if (!clockEl) return;
+  const todayBadgeEl = document.getElementById('today-badge-text');
 
   function update() {
     const now = new Date();
-    const options = {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    };
-    clockEl.textContent = now.toLocaleTimeString('es-ES', options);
+    const pad = (n) => String(n).padStart(2, '0');
+    const hours = pad(now.getHours());
+    const mins = pad(now.getMinutes());
+    const secs = pad(now.getSeconds());
+
+    const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+    const diaSem = dias[now.getDay()];
+    const diaNum = now.getDate();
+    const mes = meses[now.getMonth()];
+
+    // Header Live Clock: e.g. "Mar, 29 Sep • 20:04:15"
+    if (clockEl) {
+      clockEl.innerHTML = `
+        <span class="font-semibold text-slate-200">${diaSem}, ${diaNum} ${mes}</span>
+        <span class="text-slate-500 mx-0.5">•</span>
+        <span class="font-mono font-bold text-indigo-400">${hours}:${mins}:${secs}</span>
+      `;
+    }
+
+    // Today Banner in Calendar: e.g. "Hoy es Martes, 29 de septiembre de 2026"
+    if (todayBadgeEl) {
+      const diasCompletos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const mesesCompletos = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      todayBadgeEl.textContent = `Hoy es ${diasCompletos[now.getDay()]}, ${diaNum} de ${mesesCompletos[now.getMonth()]}`;
+    }
   }
   update();
   setInterval(update, 1000);
@@ -427,7 +478,6 @@ function setupTouchGestures() {
     const diffX = touchEndX - touchStartX;
     const diffY = touchEndY - touchStartY;
 
-    // Detect horizontal swipe if deltaX is significant and greater than deltaY
     if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
       if (diffX < 0) {
         nextMonth();
@@ -443,7 +493,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   startClock();
   setupTouchGestures();
 
-  // Register Service Worker for PWA
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
       .then(reg => console.log('PWA ServiceWorker registrado:', reg.scope))
@@ -467,7 +516,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-test-push')?.addEventListener('click', sendTestPush);
   document.getElementById('btn-test-push-settings')?.addEventListener('click', sendTestPush);
 
-  // Category change syncs default color
   document.getElementById('event-category')?.addEventListener('change', (e) => {
     const cat = state.categories.find(c => c.name === e.target.value);
     if (cat) {
@@ -475,7 +523,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Search input with debounce
   let searchTimeout;
   document.getElementById('search-input')?.addEventListener('input', (e) => {
     clearTimeout(searchTimeout);
@@ -485,7 +532,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 250);
   });
 
-  // Category filter tabs
   document.querySelectorAll('.category-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.category-filter-btn').forEach(b => {
@@ -497,7 +543,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Load initial data
   await loadSettings();
   await loadEvents();
 });

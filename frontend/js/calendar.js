@@ -59,7 +59,10 @@ function renderCalendarGrid() {
   // Previous month trailing days
   for (let i = startDayIndex - 1; i >= 0; i--) {
     const dayNum = prevMonthLastDay - i;
-    const dateStr = `${currentMonth === 0 ? currentYear - 1 : currentYear}-${String(currentMonth === 0 ? 12 : currentMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const pad = (n) => String(n).padStart(2, '0');
+    const prevM = currentMonth === 0 ? 12 : currentMonth;
+    const prevY = currentMonth === 0 ? currentYear - 1 : currentYear;
+    const dateStr = `${prevY}-${pad(prevM)}-${pad(dayNum)}`;
     html += `
       <div class="calendar-day-cell opacity-25 cursor-pointer flex flex-col items-center justify-start pt-1.5" onclick="selectDate('${dateStr}')">
         <span class="text-[11px] font-semibold text-slate-500">${dayNum}</span>
@@ -76,7 +79,7 @@ function renderCalendarGrid() {
 
     // Filter events for this specific day
     const dayEvents = state.events.filter(e => {
-      const eDate = new Date(e.start_time);
+      const eDate = parseDate(e.start_time);
       return eDate.getFullYear() === currentYear &&
              eDate.getMonth() === currentMonth &&
              eDate.getDate() === day;
@@ -101,12 +104,17 @@ function renderCalendarGrid() {
 
         <!-- Desktop Event Pills (Hidden on small mobile) -->
         <div class="hidden sm:block mt-1 space-y-1 overflow-hidden px-1.5 max-h-[52px]">
-          ${dayEvents.slice(0, 2).map(ev => `
-            <div class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium truncate text-white shadow-sm" style="background-color: ${ev.color || '#6366f1'}cc;" title="${escapeHtml(ev.title)}">
-              <span class="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span>
-              <span class="truncate">${escapeHtml(ev.title)}</span>
-            </div>
-          `).join('')}
+          ${dayEvents.slice(0, 2).map(ev => {
+            const evDate = parseDate(ev.start_time);
+            const pad = (n) => String(n).padStart(2, '0');
+            const timeTag = ev.all_day ? '' : `(${pad(evDate.getHours())}:${pad(evDate.getMinutes())}) `;
+            return `
+              <div class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium truncate text-white shadow-sm" style="background-color: ${ev.color || '#6366f1'}cc;" title="${escapeHtml(ev.title)}">
+                <span class="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span>
+                <span class="truncate">${timeTag}${escapeHtml(ev.title)}</span>
+              </div>
+            `;
+          }).join('')}
           ${dayEvents.length > 2 ? `
             <div class="text-[9px] text-slate-400 font-bold text-center">+${dayEvents.length - 2} más</div>
           ` : ''}
@@ -131,7 +139,9 @@ function renderCalendarGrid() {
   const remainingCells = (7 - (totalRendered % 7)) % 7;
   for (let d = 1; d <= remainingCells; d++) {
     const pad = (n) => String(n).padStart(2, '0');
-    const dateStr = `${currentMonth === 11 ? currentYear + 1 : currentYear}-${pad(currentMonth === 11 ? 1 : currentMonth + 2)}-${pad(d)}`;
+    const nextM = currentMonth === 11 ? 1 : currentMonth + 2;
+    const nextY = currentMonth === 11 ? currentYear + 1 : currentYear;
+    const dateStr = `${nextY}-${pad(nextM)}-${pad(d)}`;
     html += `
       <div class="calendar-day-cell opacity-25 cursor-pointer flex flex-col items-center justify-start pt-1.5" onclick="selectDate('${dateStr}')">
         <span class="text-[11px] font-semibold text-slate-500">${d}</span>
@@ -175,18 +185,27 @@ function renderSelectedDayPanel() {
   const panel = document.getElementById('selected-day-details');
   if (!panel) return;
 
+  const pad = (n) => String(n).padStart(2, '0');
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
   if (!state.selectedDate) {
-    const pad = (n) => String(n).padStart(2, '0');
-    const d = new Date();
-    state.selectedDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    state.selectedDate = todayStr;
   }
 
   const [y, m, d] = state.selectedDate.split('-').map(Number);
+  const isSelectedToday = state.selectedDate === todayStr;
+
+  const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  
   const dateObj = new Date(y, m - 1, d);
-  const dateTitle = dateObj.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  const diaSem = diasSemana[dateObj.getDay()];
+  const mesNombre = meses[m - 1];
+  const dateTitle = `${diaSem}, ${d} de ${mesNombre} de ${y}`;
 
   const dayEvents = state.events.filter(e => {
-    const evDate = new Date(e.start_time);
+    const evDate = parseDate(e.start_time);
     return evDate.getFullYear() === y &&
            evDate.getMonth() === m - 1 &&
            evDate.getDate() === d;
@@ -195,8 +214,11 @@ function renderSelectedDayPanel() {
   let html = `
     <div class="flex items-center justify-between mb-3 border-b border-slate-800/80 pb-2.5">
       <div>
-        <h3 class="text-xs sm:text-sm font-bold text-white capitalize">${dateTitle}</h3>
-        <p class="text-[11px] text-slate-400">${dayEvents.length} evento(s) este día</p>
+        <div class="flex items-center gap-1.5">
+          <h3 class="text-xs sm:text-sm font-bold text-white capitalize">${dateTitle}</h3>
+          ${isSelectedToday ? '<span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-indigo-500 text-white shadow-sm">HOY</span>' : ''}
+        </div>
+        <p class="text-[11px] text-slate-400 mt-0.5">${dayEvents.length} evento(s) este día</p>
       </div>
       <button onclick="openEventModal(null, '${state.selectedDate}')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all active:scale-95">
         <span>+ Añadir</span>
@@ -217,8 +239,18 @@ function renderSelectedDayPanel() {
   } else {
     html += '<div class="space-y-2.5 max-h-[320px] sm:max-h-[380px] overflow-y-auto pr-0.5 no-scrollbar">';
     dayEvents.forEach(ev => {
-      const evDate = new Date(ev.start_time);
-      const timeStr = ev.all_day ? 'Todo el día' : evDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      const evDate = parseDate(ev.start_time);
+      const hours = pad(evDate.getHours());
+      const mins = pad(evDate.getMinutes());
+      
+      let timeStr = '🌞 Todo el día';
+      if (!ev.all_day) {
+        timeStr = `⏰ ${hours}:${mins} hs`;
+        if (ev.end_time) {
+          const evEnd = parseDate(ev.end_time);
+          timeStr += ` - ${pad(evEnd.getHours())}:${pad(evEnd.getMinutes())} hs`;
+        }
+      }
 
       html += `
         <div class="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition-all flex flex-col gap-2 relative overflow-hidden shadow-sm">
@@ -232,7 +264,7 @@ function renderSelectedDayPanel() {
                   ${escapeHtml(ev.category || 'General')}
                 </span>
               </div>
-              <p class="text-[11px] font-semibold text-indigo-400 mt-0.5">⏰ ${timeStr} ${ev.location ? `• 📍 ${escapeHtml(ev.location)}` : ''}</p>
+              <p class="text-[11px] font-semibold text-indigo-400 mt-0.5">${timeStr} ${ev.location ? `• 📍 ${escapeHtml(ev.location)}` : ''}</p>
             </div>
             
             <div class="flex items-center gap-1 shrink-0">
@@ -310,7 +342,7 @@ function renderListView() {
   };
 
   state.events.forEach(ev => {
-    const evDate = new Date(ev.start_time);
+    const evDate = parseDate(ev.start_time);
     const evDay = new Date(evDate.getFullYear(), evDate.getMonth(), evDate.getDate());
 
     if (evDay.getTime() === todayDate.getTime()) {
@@ -354,9 +386,22 @@ function renderListView() {
 }
 
 function renderEventCard(ev) {
-  const evDate = new Date(ev.start_time);
-  const dateFormatted = evDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-  const timeFormatted = ev.all_day ? 'Todo el día' : evDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const pad = (n) => String(n).padStart(2, '0');
+  const evDate = parseDate(ev.start_time);
+
+  const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+  const dateFormatted = `${diasSemana[evDate.getDay()]}, ${evDate.getDate()} de ${meses[evDate.getMonth()]} de ${evDate.getFullYear()}`;
+  
+  let timeFormatted = '🌞 Todo el día';
+  if (!ev.all_day) {
+    timeFormatted = `⏰ ${pad(evDate.getHours())}:${pad(evDate.getMinutes())} hs`;
+    if (ev.end_time) {
+      const evEnd = parseDate(ev.end_time);
+      timeFormatted += ` - ${pad(evEnd.getHours())}:${pad(evEnd.getMinutes())} hs`;
+    }
+  }
 
   return `
     <div class="glass-card rounded-2xl p-4 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between relative group shadow-md">
@@ -385,7 +430,7 @@ function renderEventCard(ev) {
         
         <div class="flex flex-col gap-0.5 text-xs text-slate-400 mb-2.5">
           <span class="flex items-center gap-1 text-slate-300 font-semibold text-[11px] sm:text-xs">
-            🗓️ ${dateFormatted} • ⏰ ${timeFormatted}
+            🗓️ ${dateFormatted} • ${timeFormatted}
           </span>
           ${ev.location ? `<span class="flex items-center gap-1 text-slate-400 text-[11px]">📍 ${escapeHtml(ev.location)}</span>` : ''}
         </div>
@@ -431,8 +476,9 @@ function renderLogsList() {
 
   let html = '<div class="space-y-2">';
   state.logs.forEach(log => {
-    const d = new Date(log.sent_at);
-    const dateStr = d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const d = parseDate(log.sent_at);
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     const isSuccess = log.status === 'sent';
 
     html += `
