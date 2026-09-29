@@ -1,5 +1,5 @@
 /**
- * Calendario Personal - Core Application State & API Client
+ * Calendario Personal - Core Application State & API Client (Mobile-Optimized)
  */
 
 const API_BASE = '/api';
@@ -25,17 +25,17 @@ const state = {
   ]
 };
 
-// UI Toast Notification helper
+// UI Toast Notification helper (Top on mobile, bottom-right on desktop)
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
   const toast = document.createElement('div');
   const bgColors = {
-    success: 'bg-emerald-600/90 border-emerald-500 text-white',
-    error: 'bg-rose-600/90 border-rose-500 text-white',
-    info: 'bg-indigo-600/90 border-indigo-500 text-white',
-    warning: 'bg-amber-600/90 border-amber-500 text-white'
+    success: 'bg-emerald-600/95 border-emerald-400/50 text-white',
+    error: 'bg-rose-600/95 border-rose-400/50 text-white',
+    info: 'bg-indigo-600/95 border-indigo-400/50 text-white',
+    warning: 'bg-amber-600/95 border-amber-400/50 text-white'
   };
 
   const icons = {
@@ -45,23 +45,23 @@ function showToast(message, type = 'success') {
     warning: '⚠'
   };
 
-  toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md text-sm font-medium transition-all duration-300 transform translate-y-4 opacity-0 ${bgColors[type] || bgColors.info}`;
+  toast.className = `flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl shadow-2xl border backdrop-blur-xl text-xs sm:text-sm font-semibold transition-all duration-300 transform -translate-y-2 opacity-0 pointer-events-auto ${bgColors[type] || bgColors.info}`;
   toast.innerHTML = `
-    <span class="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold">${icons[type] || '•'}</span>
+    <span class="flex items-center justify-center w-5 h-5 rounded-full bg-white/20 text-[11px] font-bold shrink-0">${icons[type] || '•'}</span>
     <span class="flex-1">${message}</span>
   `;
 
   container.appendChild(toast);
   
-  // Trigger animation
+  // Animate in
   requestAnimationFrame(() => {
-    toast.classList.remove('translate-y-4', 'opacity-0');
+    toast.classList.remove('-translate-y-2', 'opacity-0');
   });
 
   setTimeout(() => {
-    toast.classList.add('translate-y-4', 'opacity-0');
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
+    toast.classList.add('-translate-y-2', 'opacity-0');
+    setTimeout(() => toast.remove(), 280);
+  }, 3500);
 }
 
 // API Calls
@@ -72,7 +72,7 @@ async function apiGet(endpoint) {
     return await res.json();
   } catch (err) {
     console.error(`Error GET ${endpoint}:`, err);
-    showToast(`Error al consultar servidor: ${err.message}`, 'error');
+    showToast(`Error de conexión: ${err.message}`, 'error');
     throw err;
   }
 }
@@ -168,15 +168,25 @@ async function loadLogs() {
   }
 }
 
-// UI State & View Switcher
+// UI State & View Switcher (Syncs desktop & mobile navs)
 function switchView(viewName) {
   state.activeView = viewName;
 
+  // Desktop view buttons
   document.querySelectorAll('.view-btn').forEach(btn => {
     if (btn.dataset.view === viewName) {
-      btn.className = 'view-btn px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition-all';
+      btn.className = 'view-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all';
     } else {
-      btn.className = 'view-btn px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all';
+      btn.className = 'view-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all';
+    }
+  });
+
+  // Mobile bottom tab bar buttons
+  document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+    if (btn.dataset.view === viewName) {
+      btn.className = 'mobile-nav-btn flex flex-col items-center justify-center gap-0.5 py-1 text-indigo-400 font-bold';
+    } else {
+      btn.className = 'mobile-nav-btn flex flex-col items-center justify-center gap-0.5 py-1 text-slate-400 hover:text-white';
     }
   });
 
@@ -187,6 +197,8 @@ function switchView(viewName) {
   if (calendarContainer) calendarContainer.classList.toggle('hidden', viewName !== 'calendar');
   if (listContainer) listContainer.classList.toggle('hidden', viewName !== 'list');
   if (settingsContainer) settingsContainer.classList.toggle('hidden', viewName !== 'settings');
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (viewName === 'settings') {
     loadSettings();
@@ -200,34 +212,9 @@ function updateSettingsUI() {
   if (!state.settings) return;
   const s = state.settings;
   
-  // Update header badges
-  const ntfyBadge = document.getElementById('header-ntfy-badge');
-  const tgBadge = document.getElementById('header-tg-badge');
   const tzDisplay = document.getElementById('header-tz');
-
   if (tzDisplay) tzDisplay.textContent = s.timezone || 'Europe/Madrid';
 
-  if (ntfyBadge) {
-    if (s.ntfy_configured) {
-      ntfyBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot"></span> ntfy: <b>${s.ntfy_topic}</b>`;
-      ntfyBadge.className = "hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-    } else {
-      ntfyBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span> ntfy no activo`;
-      ntfyBadge.className = "hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20";
-    }
-  }
-
-  if (tgBadge) {
-    if (s.telegram_configured) {
-      tgBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse-dot"></span> Telegram activo`;
-      tgBadge.className = "hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
-    } else {
-      tgBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-500"></span> Telegram inactivo`;
-      tgBadge.className = "hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700";
-    }
-  }
-
-  // Update Settings View Elements
   const stTz = document.getElementById('setting-tz-val');
   const stNtfy = document.getElementById('setting-ntfy-val');
   const stTg = document.getElementById('setting-tg-val');
@@ -235,7 +222,7 @@ function updateSettingsUI() {
 
   if (stTz) stTz.textContent = s.timezone;
   if (stNtfy) stNtfy.textContent = s.ntfy_configured ? `🟢 Conectado (${s.ntfy_server}/${s.ntfy_topic})` : '⚪ No configurado (falta NTFY_TOPIC en .env)';
-  if (stTg) stTg.textContent = s.telegram_configured ? `🟢 Conectado (Chat ID: ${s.telegram_chat_id})` : '⚪ No configurado (falta TELEGRAM_BOT_TOKEN en .env)';
+  if (stTg) stTg.textContent = s.telegram_configured ? `🟢 Conectado (Chat: ${s.telegram_chat_id})` : '⚪ Inactivo';
   if (stInterval) stInterval.textContent = `Cada ${s.scheduler_interval_minutes} minutos`;
 }
 
@@ -257,7 +244,6 @@ function openEventModal(eventData = null, defaultDateStr = null) {
     document.getElementById('event-color').value = eventData.color || '#6366f1';
     document.getElementById('event-allday').checked = eventData.all_day || false;
 
-    // Format datetime-local strings
     if (eventData.start_time) {
       const d = new Date(eventData.start_time);
       document.getElementById('event-start').value = formatForDateTimeInput(d);
@@ -272,11 +258,10 @@ function openEventModal(eventData = null, defaultDateStr = null) {
     document.getElementById('event-color').value = '#6366f1';
     document.getElementById('event-allday').checked = false;
 
-    // Default start time: clicked date or now + 1 hour
     let startDate = new Date();
     if (defaultDateStr) {
-      startDate = new Date(defaultDateStr);
-      startDate.setHours(10, 0, 0, 0);
+      const [y, m, d] = defaultDateStr.split('-').map(Number);
+      startDate = new Date(y, m - 1, d, 10, 0, 0);
     } else {
       startDate.setHours(startDate.getHours() + 1, 0, 0, 0);
     }
@@ -286,6 +271,7 @@ function openEventModal(eventData = null, defaultDateStr = null) {
   toggleAllDayFields();
   modal.classList.remove('hidden');
   modal.classList.add('flex');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeEventModal() {
@@ -293,17 +279,14 @@ function closeEventModal() {
   modal.classList.add('hidden');
   modal.classList.remove('flex');
   state.editingEventId = null;
+  document.body.style.overflow = '';
 }
 
 function toggleAllDayFields() {
   const isAllDay = document.getElementById('event-allday').checked;
-  const startInput = document.getElementById('event-start');
-  const endInput = document.getElementById('event-end');
-  
-  // If all-day is checked, we can show date only or adjust placeholder
   const timeHint = document.getElementById('allday-hint');
   if (timeHint) {
-    timeHint.textContent = isAllDay ? '⏰ La notificación sonará a las 08:00 AM del día del evento.' : '⏰ La notificación sonará a la hora exacta fijada.';
+    timeHint.textContent = isAllDay ? 'Aviso a las 08:00 AM del día del evento.' : 'Aviso a la hora exacta fijada.';
   }
 }
 
@@ -353,40 +336,40 @@ async function handleEventFormSubmit(e) {
   try {
     if (state.editingEventId) {
       await apiPut(`/events/${state.editingEventId}`, payload);
-      showToast('Evento actualizado correctamente', 'success');
+      showToast('Evento actualizado', 'success');
     } else {
       await apiPost('/events', payload);
-      showToast('Evento creado exitosamente', 'success');
+      showToast('Evento creado y alertas programadas', 'success');
     }
     closeEventModal();
     await loadEvents();
   } catch (err) {
-    // Handled in api wrapper
+    // Handled
   }
 }
 
 // Quick action: Test Push Notification
 async function sendTestPush() {
-  const btn = document.getElementById('btn-test-push');
-  if (btn) btn.disabled = true;
-  showToast('Enviando notificación de prueba a tu iPhone...', 'info');
+  const btns = [document.getElementById('btn-test-push'), document.getElementById('btn-test-push-settings')];
+  btns.forEach(b => { if (b) b.disabled = true; });
+  showToast('Enviando notificación push a tu iPhone...', 'info');
 
   try {
-    const res = await apiPost('/settings/test-notification');
-    showToast('¡Notificación enviada con éxito! Revisa tu iPhone.', 'success');
+    await apiPost('/settings/test-notification');
+    showToast('¡Notificación enviada! Revisa tu iPhone.', 'success');
   } catch (err) {
     // Handled
   } finally {
-    if (btn) btn.disabled = false;
+    btns.forEach(b => { if (b) b.disabled = false; });
   }
 }
 
 // Quick action: Force Notify Specific Event
 async function triggerEventNotificationNow(eventId) {
-  showToast('Enviando alerta del evento a tus dispositivos...', 'info');
+  showToast('Enviando recordatorio al iPhone...', 'info');
   try {
     await apiPost(`/events/${eventId}/trigger-notify`);
-    showToast('Aviso enviado correctamente a ntfy/Telegram', 'success');
+    showToast('Aviso enviado correctamente', 'success');
     await loadEvents();
   } catch (err) {
     // Handled
@@ -395,7 +378,7 @@ async function triggerEventNotificationNow(eventId) {
 
 // Delete Event
 async function confirmDeleteEvent(eventId, eventTitle) {
-  if (!confirm(`¿Estás seguro de que deseas eliminar el evento "${eventTitle}"?`)) return;
+  if (!confirm(`¿Eliminar "${eventTitle}"?`)) return;
   
   try {
     await apiDelete(`/events/${eventId}`);
@@ -414,23 +397,51 @@ function startClock() {
   function update() {
     const now = new Date();
     const options = {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
       hour12: false
     };
-    clockEl.textContent = now.toLocaleDateString('es-ES', options);
+    clockEl.textContent = now.toLocaleTimeString('es-ES', options);
   }
   update();
   setInterval(update, 1000);
 }
 
+// Touch swipe gesture for calendar navigation on mobile
+function setupTouchGestures() {
+  const grid = document.getElementById('calendar-grid-container');
+  if (!grid) return;
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  grid.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  grid.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+
+    // Detect horizontal swipe if deltaX is significant and greater than deltaY
+    if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      if (diffX < 0) {
+        nextMonth();
+      } else {
+        prevMonth();
+      }
+    }
+  }, { passive: true });
+}
+
 // Initialize application on DOM ready
 document.addEventListener('DOMContentLoaded', async () => {
   startClock();
+  setupTouchGestures();
 
   // Register Service Worker for PWA
   if ('serviceWorker' in navigator) {
@@ -444,7 +455,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });
 
-  document.getElementById('btn-new-event')?.addEventListener('click', () => openEventModal());
+  document.getElementById('btn-new-event-top')?.addEventListener('click', () => openEventModal());
   document.getElementById('btn-close-modal')?.addEventListener('click', closeEventModal);
   document.getElementById('btn-cancel-modal')?.addEventListener('click', closeEventModal);
   document.getElementById('event-modal')?.addEventListener('click', (e) => {
@@ -471,16 +482,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     searchTimeout = setTimeout(() => {
       state.searchQuery = e.target.value.trim();
       loadEvents();
-    }, 300);
+    }, 250);
   });
 
   // Category filter tabs
   document.querySelectorAll('.category-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.category-filter-btn').forEach(b => {
-        b.className = 'category-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-800/60 hover:text-white transition-all';
+        b.className = 'category-filter-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-900 hover:text-white border border-slate-800 transition-all active:scale-95';
       });
-      btn.className = 'category-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all';
+      btn.className = 'category-filter-btn shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm transition-all active:scale-95';
       state.activeCategory = btn.dataset.category;
       loadEvents();
     });
