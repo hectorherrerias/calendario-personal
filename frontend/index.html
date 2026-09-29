@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Calendario & Recordatorios Personal</title>
+  
+  <!-- PWA & Mobile Web App Meta -->
+  <meta name="description" content="Calendario autónomo con alertas push para iPhone (ntfy y Telegram)">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Calendario">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header / Navbar -->
+  <header class="sticky top-0 z-30 glass-panel border-b border-slate-800/80 safe-area-top">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Clock -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">Calendario Personal</h1>
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">AutoPush</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span id="live-clock" class="font-mono text-slate-300">--:--:--</span>
+            <span class="text-slate-600">•</span>
+            <span id="header-tz" class="text-[11px] text-slate-400 font-mono">Europe/Madrid</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center / Status badges -->
+      <div class="hidden lg:flex items-center gap-2">
+        <div id="header-ntfy-badge" class="hidden items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-slate-500"></span> ntfy
+        </div>
+        <div id="header-tg-badge" class="hidden items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-slate-500"></span> Telegram
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button id="btn-test-push" title="Probar envío push inmediato a iPhone" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 transition-all active:scale-95">
+          <span>📲 Probar Push</span>
+        </button>
+
+        <button id="btn-new-event" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+          <span class="hidden sm:inline">Nuevo Evento</span>
+          <span class="sm:hidden">Nuevo</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Sub-navigation tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-slate-800/60 py-2 flex items-center justify-between overflow-x-auto scrollbar-none">
+      <div class="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-2xl border border-slate-800">
+        <button data-view="calendar" class="view-btn px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition-all">
+          🗓️ Calendario Mensual
+        </button>
+        <button data-view="list" class="view-btn px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+          📋 Próximos Eventos
+        </button>
+        <button data-view="settings" class="view-btn px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+          ⚙️ Ajustes & iOS
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 safe-area-bottom">
+
+    <!-- VIEW 1: CALENDAR VIEW -->
+    <section id="view-calendar" class="space-y-6">
+      
+      <!-- Calendar Controls & Navigation Bar -->
+      <div class="glass-panel rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <h2 id="current-month-title" class="text-xl sm:text-2xl font-extrabold text-white capitalize">
+            Septiembre 2026
+          </h2>
+          <button onclick="goToToday()" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 transition-all">
+            Hoy
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="prevMonth()" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all active:scale-95" title="Mes anterior">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button onclick="nextMonth()" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all active:scale-95" title="Mes siguiente">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Calendar Layout (Grid + Day Detail Sidebar) -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Calendar Grid (2 cols on large screens) -->
+        <div class="lg:col-span-2 glass-panel rounded-2xl overflow-hidden border border-slate-800 shadow-xl" id="calendar-grid-container">
+          <!-- Rendered via JS -->
+        </div>
+
+        <!-- Day Details Sidebar (1 col on large screens) -->
+        <div class="glass-panel rounded-2xl p-5 border border-slate-800 h-fit" id="selected-day-details">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- VIEW 2: LIST VIEW ("PRÓXIMOS EVENTOS") -->
+    <section id="view-list" class="hidden space-y-6">
+      
+      <!-- Filters & Search Bar -->
+      <div class="glass-panel rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <!-- Search -->
+        <div class="relative w-full md:w-72">
+          <input type="text" id="search-input" placeholder="Buscar eventos o notas..." class="w-full pl-9 pr-4 py-2 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all">
+          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+
+        <!-- Category Chips -->
+        <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto scrollbar-none py-1">
+          <button data-category="Todas" class="category-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all">
+            Todas
+          </button>
+          <button data-category="Trabajo" class="category-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-800/60 hover:text-white transition-all">
+            💼 Trabajo
+          </button>
+          <button data-category="Personal" class="category-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-800/60 hover:text-white transition-all">
+            👤 Personal
+          </button>
+          <button data-category="Salud" class="category-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-800/60 hover:text-white transition-all">
+            🏥 Salud
+          </button>
+          <button data-category="Cumpleaños" class="category-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-800/60 hover:text-white transition-all">
+            🎂 Cumpleaños
+          </button>
+          <button data-category="Finanzas" class="category-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-800/60 hover:text-white transition-all">
+            💳 Finanzas
+          </button>
+          <button data-category="Ocio" class="category-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 bg-slate-800/60 hover:text-white transition-all">
+            🎉 Ocio
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Events List Container -->
+      <div id="events-list-container">
+        <!-- Rendered via JS -->
+      </div>
+
+    </section>
+
+    <!-- VIEW 3: SETTINGS & IOS CONFIGURATION -->
+    <section id="view-settings" class="hidden space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Status & Config Card -->
+        <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>⚙️</span> Estado del Sistema
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+              Servidor Activo
+            </span>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-400">Zona Horaria Servidor (TZ):</span>
+              <span id="setting-tz-val" class="font-mono font-bold text-indigo-300">Europe/Madrid</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-400">Canal Push ntfy.sh:</span>
+              <span id="setting-ntfy-val" class="font-mono text-slate-300">Cargando...</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-400">Canal Telegram Bot:</span>
+              <span id="setting-tg-val" class="font-mono text-slate-300">Cargando...</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-400">Frecuencia del Scheduler:</span>
+              <span id="setting-interval-val" class="font-mono text-slate-300">Cada 5 minutos</span>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-white">Comprobar entrega en iPhone</p>
+              <p class="text-[11px] text-slate-400">Envía un push instantáneo a todos los canales configurados</p>
+            </div>
+            <button id="btn-test-push-settings" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
+              📲 Enviar Test Push
+            </button>
+          </div>
+        </div>
+
+        <!-- Guide for iPhone Notifications Card -->
+        <div class="glass-panel rounded-2xl p-6 border border-slate-800 space-y-4">
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <span>📱</span> Guía de Configuración Push en iPhone
+          </h3>
+
+          <div class="space-y-4 text-xs text-slate-300">
+            <!-- ntfy Method -->
+            <div class="p-3.5 rounded-xl bg-slate-900/70 border border-indigo-500/20">
+              <h4 class="font-bold text-indigo-300 text-sm mb-1">Opción 1: App Oficial ntfy para iOS (Recomendada)</h4>
+              <ol class="list-decimal list-inside space-y-1 text-slate-400 mt-2">
+                <li>Descarga <b>ntfy</b> gratis en tu iPhone desde la <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" class="text-indigo-400 underline">App Store</a>.</li>
+                <li>Abre la app y pulsa en el botón <b>+</b> (Suscribirse a un tema).</li>
+                <li>Escribe el mismo nombre que pusiste en tu variable <code>NTFY_TOPIC</code> de tu archivo <code>.env</code>.</li>
+                <li>¡Listo! Recibirás las notificaciones con sonido y aviso inmediato.</li>
+              </ol>
+            </div>
+
+            <!-- Telegram Method -->
+            <div class="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800">
+              <h4 class="font-bold text-cyan-300 text-sm mb-1">Opción 2: Telegram Bot</h4>
+              <ol class="list-decimal list-inside space-y-1 text-slate-400 mt-2">
+                <li>Crea un bot con <b>@BotFather</b> y obtén tu <code>TELEGRAM_BOT_TOKEN</code>.</li>
+                <li>Obtén tu <code>TELEGRAM_CHAT_ID</code> hablando con <b>@userinfobot</b>.</li>
+                <li>Inicia chat con tu bot pulsando <b>/start</b> en Telegram.</li>
+              </ol>
+            </div>
+
+            <!-- Automatic Triggers Info -->
+            <div class="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-[11px] text-indigo-200">
+              <p class="font-bold mb-1">⏰ Los 3 disparos automáticos por evento:</p>
+              <p>• <b>7 días antes:</b> a las 09:00 AM hora local.</p>
+              <p>• <b>1 día antes:</b> a las 09:00 AM hora local.</p>
+              <p>• <b>Mismo día:</b> a la hora exacta (o a las 08:00 AM si es día completo).</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Notification Logs History -->
+      <div class="glass-panel rounded-2xl p-6 border border-slate-800">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <span>📜</span> Registro de Notificaciones Enviadas
+          </h3>
+          <button onclick="loadLogs()" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium">
+            Actualizar registros
+          </button>
+        </div>
+        <div id="notification-logs-container">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- EVENT MODAL (CREATE / EDIT) -->
+  <div id="event-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="glass-modal rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-slate-700/60 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <h3 id="modal-title" class="text-lg font-extrabold text-white">Nuevo Evento</h3>
+        <button id="btn-close-modal" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Form -->
+      <form id="event-form" class="space-y-4">
+        
+        <!-- Title -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Título del Evento *</label>
+          <input type="text" id="event-title" required placeholder="Ej. Cita médica, Renovación seguro, Cumpleaños..." class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- Category & Color Row -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Categoría</label>
+            <select id="event-category" class="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+              <option value="Trabajo">💼 Trabajo</option>
+              <option value="Personal">👤 Personal</option>
+              <option value="Salud">🏥 Salud</option>
+              <option value="Cumpleaños">🎂 Cumpleaños</option>
+              <option value="Finanzas">💳 Finanzas</option>
+              <option value="Ocio">🎉 Ocio</option>
+              <option value="General" selected>📌 General</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Color de Etiqueta</label>
+            <div class="flex items-center gap-2">
+              <input type="color" id="event-color" value="#6366f1" class="h-10 w-12 bg-transparent cursor-pointer rounded-xl border border-slate-700 p-1">
+              <span class="text-xs text-slate-400">Personalizado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- All Day Toggle -->
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div>
+            <span class="text-xs font-bold text-slate-200">Evento de todo el día</span>
+            <p id="allday-hint" class="text-[11px] text-slate-400">La notificación sonará a la hora exacta fijada.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="event-allday" class="sr-only peer">
+            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+
+        <!-- Date & Time Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Fecha y Hora de Inicio *</label>
+            <input type="datetime-local" id="event-start" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Fecha y Hora de Fin (Opcional)</label>
+            <input type="datetime-local" id="event-end" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <!-- Location -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Ubicación (Opcional)</label>
+          <input type="text" id="event-location" placeholder="Ej. Calle Gran Vía 12, Sala de reuniones, Online..." class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Descripción / Notas (Opcional)</label>
+          <textarea id="event-desc" rows="3" placeholder="Detalles, enlaces, instrucciones o recordatorios adicionales..." class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <!-- Info Card: 3 Automated Triggers -->
+        <div class="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-[11px] text-indigo-300 flex items-start gap-2">
+          <span>🔔</span>
+          <div>
+            <span class="font-bold">Notificaciones push programadas:</span>
+            <p>Se enviarán alertas a tu iPhone <b>7 días antes (09:00)</b>, <b>1 día antes (09:00)</b> y el <b>día del evento</b>.</p>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <button type="button" id="btn-cancel-modal" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all">
+            Cancelar
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all">
+            Guardar Evento
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/calendar.js"></script>
+</body>
+</html>

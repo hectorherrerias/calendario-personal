@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  calendario-personal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: calendario-personal:latest
+    container_name: calendario_personal
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent SQLite database volume
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - TZ=${TZ:-Europe/Madrid}
+      - DATABASE_URL=sqlite:////app/data/calendar.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
