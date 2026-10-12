@@ -1,11 +1,10 @@
-const CACHE_NAME = 'calendario-personal-v1';
+const CACHE_NAME = 'calendario-personal-v2';
 const ASSETS = [
   '/',
-  '/static/index.html',
   '/static/css/style.css',
   '/static/js/app.js',
   '/static/js/calendar.js',
-  '/static/manifest.json',
+  '/manifest.json',
   '/static/icons/icon-192.svg',
   '/static/icons/icon-512.svg'
 ];

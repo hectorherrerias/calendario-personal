@@ -1,18 +1,27 @@
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlmodel import Session, select, desc
+from sqlmodel import Session, select, desc, func, or_
 
 from backend.config import settings
 from backend.database import get_session
-from backend.models import Event, EventCreate, EventRead, EventUpdate, NotificationLog
-from backend.notifier import dispatch_notification, format_event_notification
-from backend.scheduler import format_time_spanish, get_local_now
+from backend.models import (
+    Event, EventCreate, EventRead, EventUpdate,
+    Task, TaskCreate, TaskRead, TaskUpdate,
+    DailyNote, DailyNoteCreate, DailyNoteRead, DailyNoteUpdate,
+    NotificationLog
+)
+from backend.notifier import dispatch_notification, format_event_notification, format_task_notification
+from backend.scheduler import format_time_spanish, format_event_range_spanish, get_local_now
 
 logger = logging.getLogger("routes")
 router = APIRouter(prefix="/api")
+
+# -------------------------------------------------------------
+# SYSTEM & HEALTH ENDPOINTS
+# -------------------------------------------------------------
 
 @router.get("/health", tags=["System"])
 def health_check():
@@ -61,25 +70,31 @@ async def trigger_test_notification(
         )
     return {"message": "Notificación de prueba enviada exitosamente", "result": result}
 
+
 # -------------------------------------------------------------
-# EVENT CRUD ENDPOINTS
+# EVENT CRUD ENDPOINTS (Soporte Multidía y Rango de Fechas)
 # -------------------------------------------------------------
 
 @router.get("/events", response_model=List[EventRead], tags=["Events"])
 def list_events(
-    start_date: Optional[datetime] = Query(None, description="Filter events on or after date"),
-    end_date: Optional[datetime] = Query(None, description="Filter events on or before date"),
+    start_date: Optional[datetime] = Query(None, description="Filter events overlapping on or after date"),
+    end_date: Optional[datetime] = Query(None, description="Filter events overlapping on or before date"),
     category: Optional[str] = Query(None, description="Filter by category"),
     search: Optional[str] = Query(None, description="Search term in title or description"),
     session: Session = Depends(get_session)
 ):
-    """List all events with optional filtering"""
+    """List all events with multi-day range overlap filtering"""
     stmt = select(Event)
     
+    # Overlap logic for multi-day events:
+    # An event overlaps [start_date, end_date] if:
+    # event.start_time <= end_date AND effective_end >= start_date
     if start_date:
-        stmt = stmt.where(Event.start_time >= start_date)
+        effective_end = func.coalesce(Event.end_date, Event.end_time, Event.start_time)
+        stmt = stmt.where(effective_end >= start_date)
     if end_date:
         stmt = stmt.where(Event.start_time <= end_date)
+        
     if category and category.lower() != "todas":
         stmt = stmt.where(Event.category == category)
     if search:
@@ -100,15 +115,22 @@ def get_event(event_id: int, session: Session = Depends(get_session)):
 
 @router.post("/events", response_model=EventRead, status_code=status.HTTP_201_CREATED, tags=["Events"])
 def create_event(event_in: EventCreate, session: Session = Depends(get_session)):
-    """Create a new event"""
+    """Create a new event with optional multi-day range"""
     event = Event.from_orm(event_in)
+    
+    # Keep end_time and end_date in sync for cross-compatibility
+    if event.end_date and not event.end_time:
+        event.end_time = event.end_date
+    elif event.end_time and not event.end_date:
+        event.end_date = event.end_time
+        
     event.created_at = datetime.utcnow()
     event.updated_at = datetime.utcnow()
     
     session.add(event)
     session.commit()
     session.refresh(event)
-    logger.info(f"Evento creado: #{event.id} - '{event.title}'")
+    logger.info(f"Evento creado: #{event.id} - '{event.title}' (Multidía: {bool(event.end_date and event.end_date.date() != event.start_time.date())})")
     return event
 
 @router.put("/events/{event_id}", response_model=EventRead, tags=["Events"])
@@ -119,6 +141,12 @@ def update_event(event_id: int, event_update: EventUpdate, session: Session = De
         raise HTTPException(status_code=404, detail="Evento no encontrado")
     
     update_data = event_update.dict(exclude_unset=True)
+    
+    # Sync end_time and end_date
+    if "end_date" in update_data and "end_time" not in update_data:
+        update_data["end_time"] = update_data["end_date"]
+    elif "end_time" in update_data and "end_date" not in update_data:
+        update_data["end_date"] = update_data["end_time"]
     
     # If the start_time changes, reset notification flags if in the future
     if "start_time" in update_data and update_data["start_time"] != event.start_time:
@@ -178,7 +206,15 @@ async def force_event_notification(event_id: int, session: Session = Depends(get
     else:
         event_local = event.start_time.astimezone(tz)
         
-    time_str = format_time_spanish(event_local, event.all_day)
+    effective_end = event.end_date or event.end_time
+    end_local = None
+    if effective_end:
+        if effective_end.tzinfo is None:
+            end_local = effective_end.replace(tzinfo=tz)
+        else:
+            end_local = effective_end.astimezone(tz)
+        
+    time_str = format_event_range_spanish(event_local, end_local, event.all_day)
     title, body, priority, tags = format_event_notification(
         event_title=event.title,
         event_time_str=time_str,
@@ -197,6 +233,244 @@ async def force_event_notification(event_id: int, session: Session = Depends(get
         trigger_type="manual_event"
     )
     return {"message": "Notificación manual disparada", "result": res}
+
+
+# -------------------------------------------------------------
+# TASK CRUD ENDPOINTS (Checklist / To-Do & Hábitos)
+# -------------------------------------------------------------
+
+@router.get("/tasks", response_model=List[TaskRead], tags=["Tasks"])
+def list_tasks(
+    completed: Optional[bool] = Query(None, description="Filter by completion status"),
+    priority: Optional[str] = Query(None, description="Filter by priority: low, medium, high"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    date: Optional[str] = Query(None, description="Filter tasks due on date (YYYY-MM-DD)"),
+    search: Optional[str] = Query(None, description="Search term in title or description"),
+    session: Session = Depends(get_session)
+):
+    """List tasks with status, priority, category, and date filters"""
+    stmt = select(Task)
+    
+    if completed is not None:
+        stmt = stmt.where(Task.completed == completed)
+    if priority and priority.lower() != "todas":
+        stmt = stmt.where(Task.priority == priority.lower())
+    if category and category.lower() != "todas":
+        stmt = stmt.where(Task.category_id == category)
+    if search:
+        search_fmt = f"%{search}%"
+        stmt = stmt.where((Task.title.ilike(search_fmt)) | (Task.description.ilike(search_fmt)))
+    if date:
+        # Match due_date on specific day "YYYY-MM-DD"
+        try:
+            d_start = datetime.strptime(f"{date} 00:00:00", "%Y-%m-%d %H:%M:%S")
+            d_end = datetime.strptime(f"{date} 23:59:59", "%Y-%m-%d %H:%M:%S")
+            stmt = stmt.where(Task.due_date >= d_start, Task.due_date <= d_end)
+        except Exception:
+            pass
+
+    # Order: pending first, then by due_date ascending (nulls last), then created_at desc
+    stmt = stmt.order_by(Task.completed.asc(), Task.due_date.asc().nulls_last(), Task.created_at.desc())
+    tasks = session.exec(stmt).all()
+    return tasks
+
+@router.get("/tasks/{task_id}", response_model=TaskRead, tags=["Tasks"])
+def get_task(task_id: int, session: Session = Depends(get_session)):
+    """Get single task details by ID"""
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+    return task
+
+@router.post("/tasks", response_model=TaskRead, status_code=status.HTTP_201_CREATED, tags=["Tasks"])
+def create_task(task_in: TaskCreate, session: Session = Depends(get_session)):
+    """Create a new task"""
+    task = Task.from_orm(task_in)
+    task.created_at = datetime.utcnow()
+    if task.completed:
+        task.completed_at = datetime.utcnow()
+        
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    logger.info(f"Tarea creada: #{task.id} - '{task.title}' (Prioridad: {task.priority})")
+    return task
+
+@router.put("/tasks/{task_id}", response_model=TaskRead, tags=["Tasks"])
+def update_task(task_id: int, task_update: TaskUpdate, session: Session = Depends(get_session)):
+    """Update task details"""
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+
+    update_data = task_update.dict(exclude_unset=True)
+    
+    # Handle completion status timestamps
+    if "completed" in update_data:
+        if update_data["completed"] and not task.completed:
+            update_data["completed_at"] = datetime.utcnow()
+        elif not update_data["completed"] and task.completed:
+            update_data["completed_at"] = None
+            update_data["notified"] = False
+
+    # If due date changed to future, reset notified
+    if "due_date" in update_data and update_data["due_date"] != task.due_date:
+        update_data.setdefault("notified", False)
+
+    for key, val in update_data.items():
+        setattr(task, key, val)
+
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    logger.info(f"Tarea actualizada: #{task.id} - '{task.title}' (Completada: {task.completed})")
+    return task
+
+@router.patch("/tasks/{task_id}/toggle", response_model=TaskRead, tags=["Tasks"])
+def toggle_task_completed(task_id: int, session: Session = Depends(get_session)):
+    """Quick toggle completion status for a task"""
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+
+    task.completed = not task.completed
+    if task.completed:
+        task.completed_at = datetime.utcnow()
+    else:
+        task.completed_at = None
+        task.notified = False
+
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    logger.info(f"Tarea toggleada: #{task.id} - completada={task.completed}")
+    return task
+
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Tasks"])
+def delete_task(task_id: int, session: Session = Depends(get_session)):
+    """Delete a task"""
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+
+    session.delete(task)
+    session.commit()
+    logger.info(f"Tarea eliminada: #{task_id}")
+    return None
+
+@router.post("/tasks/{task_id}/trigger-notify", tags=["Tasks"])
+async def force_task_notification(task_id: int, session: Session = Depends(get_session)):
+    """Manually dispatch instant push notification for this task"""
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarea no encontrada")
+
+    try:
+        tz = ZoneInfo(settings.TZ)
+    except Exception:
+        tz = ZoneInfo("Europe/Madrid")
+
+    time_str = None
+    if task.due_date:
+        if task.due_date.tzinfo is None:
+            task_local = task.due_date.replace(tzinfo=tz)
+        else:
+            task_local = task.due_date.astimezone(tz)
+        time_str = format_time_spanish(task_local, all_day=False)
+
+    title, body, priority, tags = format_task_notification(
+        task_title=task.title,
+        due_time_str=time_str,
+        priority=task.priority,
+        description=task.description,
+        category=task.category_id
+    )
+
+    res = await dispatch_notification(
+        title=f"🔔 [Recordatorio Tarea] {title}",
+        message=body,
+        priority=priority,
+        tags=tags,
+        task_id=task.id,
+        trigger_type="manual_task"
+    )
+    return {"message": "Notificación manual de tarea enviada", "result": res}
+
+
+# -------------------------------------------------------------
+# JOURNAL & DAILY NOTE ENDPOINTS (Bitácora / Registro Diario)
+# -------------------------------------------------------------
+
+@router.get("/journal", response_model=List[DailyNoteRead], tags=["Journal"])
+def list_journal_entries(limit: int = 60, session: Session = Depends(get_session)):
+    """List recent daily journal entries ordered by date descending"""
+    stmt = select(DailyNote).order_by(desc(DailyNote.date)).limit(limit)
+    return session.exec(stmt).all()
+
+@router.get("/journal/{date_str}", response_model=DailyNoteRead, tags=["Journal"])
+def get_journal_entry(date_str: str, session: Session = Depends(get_session)):
+    """Get journal / daily note for a specific date (YYYY-MM-DD)"""
+    stmt = select(DailyNote).where(DailyNote.date == date_str)
+    entry = session.exec(stmt).first()
+    if not entry:
+        # Return empty virtual entry if not saved yet
+        return DailyNoteRead(
+            id=0,
+            date=date_str,
+            content="",
+            summary=None,
+            mood=None,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+    return entry
+
+@router.put("/journal/{date_str}", response_model=DailyNoteRead, tags=["Journal"])
+def upsert_journal_entry(date_str: str, note_in: DailyNoteUpdate, session: Session = Depends(get_session)):
+    """Create or update daily note / journal entry for a specific date"""
+    stmt = select(DailyNote).where(DailyNote.date == date_str)
+    entry = session.exec(stmt).first()
+
+    now = datetime.utcnow()
+    if not entry:
+        entry = DailyNote(
+            date=date_str,
+            content=note_in.content or "",
+            summary=note_in.summary,
+            mood=note_in.mood,
+            created_at=now,
+            updated_at=now
+        )
+        session.add(entry)
+    else:
+        if note_in.content is not None:
+            entry.content = note_in.content
+        if note_in.summary is not None:
+            entry.summary = note_in.summary
+        if note_in.mood is not None:
+            entry.mood = note_in.mood
+        entry.updated_at = now
+        session.add(entry)
+
+    session.commit()
+    session.refresh(entry)
+    logger.info(f"Bitácora guardada para {date_str} ({len(entry.content)} caracteres)")
+    return entry
+
+@router.delete("/journal/{date_str}", status_code=status.HTTP_204_NO_CONTENT, tags=["Journal"])
+def delete_journal_entry(date_str: str, session: Session = Depends(get_session)):
+    """Delete a daily journal entry"""
+    stmt = select(DailyNote).where(DailyNote.date == date_str)
+    entry = session.exec(stmt).first()
+    if entry:
+        session.delete(entry)
+        session.commit()
+    return None
+
+
+# -------------------------------------------------------------
+# NOTIFICATION LOGS
+# -------------------------------------------------------------
 
 @router.get("/logs", response_model=List[NotificationLog], tags=["Logs"])
 def list_notification_logs(limit: int = 50, session: Session = Depends(get_session)):

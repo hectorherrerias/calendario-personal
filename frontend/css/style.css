@@ -33,43 +33,43 @@ html, body {
   padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 .safe-bottom-nav {
-  padding-bottom: calc(64px + max(12px, env(safe-area-inset-bottom)));
+  padding-bottom: calc(68px + max(14px, env(safe-area-inset-bottom)));
 }
 
 /* Glassmorphism & Translucent Bars (iOS Blur Feel) */
 .glass-header {
-  background: rgba(3, 7, 18, 0.82);
+  background: rgba(3, 7, 18, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-bottom-bar {
-  background: rgba(10, 15, 29, 0.88);
+  background: rgba(10, 15, 29, 0.90);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
 }
 
 .glass-card {
-  background: rgba(17, 24, 39, 0.65);
+  background: rgba(17, 24, 39, 0.70);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-card:active {
-  background: rgba(31, 41, 55, 0.7);
+  background: rgba(31, 41, 55, 0.75);
 }
 
 .glass-panel {
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(15, 23, 42, 0.78);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Calendar Grid Styling for Mobile */
+/* Calendar Grid Styling for Mobile & Desktop */
 .calendar-grid-header {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -82,15 +82,15 @@ html, body {
 }
 
 .calendar-day-cell {
-  min-height: 82px;
+  min-height: 86px;
   transition: background-color 0.15s ease, transform 0.1s ease;
   user-select: none;
 }
 
 @media (max-width: 640px) {
   .calendar-day-cell {
-    min-height: 58px;
-    padding: 4px 2px;
+    min-height: 60px;
+    padding: 3px 2px;
   }
 }
 
@@ -98,7 +98,26 @@ html, body {
   transform: scale(0.96);
 }
 
-/* Horizontal Smooth Scroll for Category Chips */
+/* Multi-day Event Pill Styles */
+.multiday-pill {
+  position: relative;
+  font-weight: 600;
+  border-radius: 6px;
+}
+.multiday-pill.start-pill {
+  border-top-right-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+.multiday-pill.middle-pill {
+  border-radius: 2px;
+  opacity: 0.90;
+}
+.multiday-pill.end-pill {
+  border-top-left-radius: 2px;
+  border-bottom-left-radius: 2px;
+}
+
+/* Horizontal Smooth Scroll for Category & Filter Chips */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -117,7 +136,7 @@ html, body {
     right: 0;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
-    max-height: 90vh !important;
+    max-height: 92vh !important;
     animation: slideUpMobile 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 }
@@ -155,6 +174,48 @@ html, body {
 /* Native-like Active Feedback */
 button:active {
   transform: scale(0.97);
+}
+
+/* Task Checkbox & Strike-through Animations */
+.task-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #64748b;
+  border-radius: 7px;
+  outline: none;
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: transparent;
+  flex-shrink: 0;
+}
+
+.task-checkbox:hover {
+  border-color: #818cf8;
+}
+
+.task-checkbox:checked {
+  background-color: #6366f1;
+  border-color: #6366f1;
+  transform: scale(1.05);
+}
+
+.task-checkbox:checked::before {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2.2px solid white;
+  border-bottom: 2.2px solid white;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.task-title.completed {
+  text-decoration: line-through;
+  color: #64748b;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
 }
 
 /* Custom Scrollbars for Desktop */

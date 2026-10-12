@@ -96,6 +96,7 @@ async def dispatch_notification(
     priority: str = "default",
     tags: Optional[List[str]] = None,
     event_id: Optional[int] = None,
+    task_id: Optional[int] = None,
     trigger_type: str = "manual"
 ) -> Dict[str, Any]:
     """
@@ -136,6 +137,7 @@ async def dispatch_notification(
         with Session(engine) as session:
             log_entry = NotificationLog(
                 event_id=event_id,
+                task_id=task_id,
                 trigger_type=trigger_type,
                 channel="+".join(channel_used) if channel_used else "none",
                 title=title,
@@ -154,7 +156,14 @@ async def dispatch_notification(
         "details": results
     }
 
-def format_event_notification(event_title: str, event_time_str: str, trigger_label: str, description: Optional[str] = None, location: Optional[str] = None, category: Optional[str] = None) -> tuple[str, str, str, list[str]]:
+def format_event_notification(
+    event_title: str,
+    event_time_str: str,
+    trigger_label: str,
+    description: Optional[str] = None,
+    location: Optional[str] = None,
+    category: Optional[str] = None
+) -> tuple[str, str, str, list[str]]:
     """Generate user-friendly title, body, priority and tags for event alerts"""
     if trigger_label == "7d":
         title = f"🗓️ En 7 días: {event_title}"
@@ -180,3 +189,33 @@ def format_event_notification(event_title: str, event_time_str: str, trigger_lab
 
     body = "\n".join(lines)
     return title, body, priority, tags
+
+def format_task_notification(
+    task_title: str,
+    due_time_str: Optional[str] = None,
+    priority: str = "medium",
+    description: Optional[str] = None,
+    category: Optional[str] = None
+) -> tuple[str, str, str, list[str]]:
+    """Generate user-friendly title, body, priority and tags for task alerts"""
+    priority_emojis = {
+        "high": "🔴",
+        "medium": "🟡",
+        "low": "🟢"
+    }
+    emoji = priority_emojis.get(priority.lower(), "📋")
+    title = f"{emoji} Tarea pendiente: {task_title}"
+    push_priority = "high" if priority.lower() == "high" else "default"
+    tags = ["white_check_mark", "memo", "clipboard"]
+
+    lines = []
+    if due_time_str:
+        lines.append(f"⏰ Fecha límite: {due_time_str}")
+    lines.append(f"⚡ Prioridad: {priority.upper()}")
+    if category:
+        lines.append(f"🏷️ Categoría: {category}")
+    if description:
+        lines.append(f"\n📝 {description.strip()}")
+
+    body = "\n".join(lines)
+    return title, body, push_priority, tags

@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Calendario Personal</title>
+  <title>Calendario Personal - Eventos, Tareas & Bitácora</title>
   
   <!-- PWA & Mobile Web App Meta (iOS Optimized) -->
-  <meta name="description" content="Calendario personal y recordatorios con notificaciones push para iPhone">
+  <meta name="description" content="Calendario personal, tareas y bitácora diaria con notificaciones push para iPhone">
   <meta name="theme-color" content="#030712">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -49,7 +49,7 @@
     <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
       
       <!-- Brand & Clean Live Date Clock -->
-      <div class="flex items-center gap-2.5 sm:gap-3">
+      <div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer" onclick="switchView('calendar')">
         <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
           <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -70,14 +70,20 @@
 
       <!-- Desktop View Switcher Tabs -->
       <div class="hidden md:flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
-        <button data-view="calendar" class="view-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all">
+        <button data-view="calendar" class="view-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all">
           🗓️ Calendario
         </button>
-        <button data-view="list" class="view-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
-          📋 Próximos
+        <button data-view="tasks" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+          📋 Tareas
         </button>
-        <button data-view="settings" class="view-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
-          ⚙️ Ajustes & iOS
+        <button data-view="journal" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+          📖 Bitácora
+        </button>
+        <button data-view="list" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+          ⚡ Próximos
+        </button>
+        <button data-view="settings" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+          ⚙️ Ajustes
         </button>
       </div>
 
@@ -88,12 +94,17 @@
           <span class="hidden sm:inline">Probar Push</span>
         </button>
 
-        <button id="btn-new-event-top" class="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Nuevo Evento</span>
-        </button>
+        <div class="hidden sm:flex items-center gap-1.5">
+          <button onclick="openTaskModal()" class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-all active:scale-95">
+            <span>+ Tarea</span>
+          </button>
+          <button id="btn-new-event-top" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>+ Evento</span>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -102,7 +113,9 @@
   <!-- Main Container -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 safe-bottom-nav">
 
-    <!-- VIEW 1: CALENDAR VIEW -->
+    <!-- ============================================================= -->
+    <!-- VIEW 1: CALENDAR VIEW (Mes + Eventos Multidía + Sidebar)      -->
+    <!-- ============================================================= -->
     <section id="view-calendar" class="space-y-4 sm:space-y-6">
       
       <!-- Calendar Controls & Navigation Bar -->
@@ -110,7 +123,7 @@
         <div class="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
           <div class="flex items-center gap-2">
             <h2 id="current-month-title" class="text-base sm:text-xl font-extrabold text-white capitalize tracking-tight">
-              Septiembre 2026
+              Octubre 2026
             </h2>
             <button onclick="goToToday()" class="px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 transition-all active:scale-95 flex items-center gap-1">
               <span>🎯</span>
@@ -155,7 +168,7 @@
         </div>
 
         <!-- Day Details Sidebar / Mobile section below grid -->
-        <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800/80 shadow-lg h-fit" id="selected-day-details">
+        <div class="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800/80 shadow-lg space-y-4" id="selected-day-details">
           <!-- Rendered via JS -->
         </div>
 
@@ -163,7 +176,202 @@
 
     </section>
 
-    <!-- VIEW 2: LIST VIEW ("PRÓXIMOS EVENTOS") -->
+    <!-- ============================================================= -->
+    <!-- VIEW 2: TASKS & CHECKLIST (To-Do & Hábitos)                   -->
+    <!-- ============================================================= -->
+    <section id="view-tasks" class="hidden space-y-4 sm:space-y-6">
+      
+      <!-- Tasks Header & Quick Add -->
+      <div class="glass-panel rounded-2xl p-4 sm:p-5 space-y-4 shadow-lg">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base sm:text-xl font-extrabold text-white flex items-center gap-2">
+              <span>📋</span> Tareas & Hábitos
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">Organiza tus pendientes diarios, tareas periódicas y hábitos</p>
+          </div>
+          <button onclick="openTaskModal()" class="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Nueva Tarea</span>
+          </button>
+        </div>
+
+        <!-- Stats Overview Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+          <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+            <span class="text-[10px] sm:text-xs text-slate-400 font-medium">Total</span>
+            <p id="task-stat-total" class="text-lg sm:text-xl font-extrabold text-white">0</p>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/80 border border-amber-500/20">
+            <span class="text-[10px] sm:text-xs text-amber-400 font-medium">Pendientes</span>
+            <p id="task-stat-pending" class="text-lg sm:text-xl font-extrabold text-amber-400">0</p>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/20">
+            <span class="text-[10px] sm:text-xs text-emerald-400 font-medium">Completadas</span>
+            <p id="task-stat-completed" class="text-lg sm:text-xl font-extrabold text-emerald-400">0</p>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-900/80 border border-rose-500/20">
+            <span class="text-[10px] sm:text-xs text-rose-400 font-medium">Prioridad Alta</span>
+            <p id="task-stat-high" class="text-lg sm:text-xl font-extrabold text-rose-400">0</p>
+          </div>
+        </div>
+
+        <!-- Quick Add Single-Line Input -->
+        <form id="quick-task-form" class="flex items-center gap-2 pt-1">
+          <div class="relative flex-1">
+            <input type="text" id="quick-task-title" placeholder="Añadir tarea rápida... (ej: Comprar café, Revisar informe)" required class="w-full pl-3.5 pr-20 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            <select id="quick-task-priority" class="absolute right-1.5 top-1.5 bottom-1.5 bg-slate-800 text-[11px] text-slate-300 font-semibold px-2 rounded-lg border border-slate-700 focus:outline-none">
+              <option value="medium">Media</option>
+              <option value="high">Alta 🔴</option>
+              <option value="low">Baja 🟢</option>
+            </select>
+          </div>
+          <button type="submit" class="px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition-all active:scale-95 shrink-0">
+            + Añadir
+          </button>
+        </form>
+
+        <!-- Filters Row -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800">
+          
+          <!-- Status Tabs -->
+          <div class="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs">
+            <button onclick="setTaskFilter('status', 'all')" id="task-filter-status-all" class="px-3 py-1.5 rounded-lg font-bold bg-indigo-600 text-white transition-all">
+              Todas
+            </button>
+            <button onclick="setTaskFilter('status', 'pending')" id="task-filter-status-pending" class="px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition-all">
+              Pendientes
+            </button>
+            <button onclick="setTaskFilter('status', 'completed')" id="task-filter-status-completed" class="px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition-all">
+              Completadas
+            </button>
+          </div>
+
+          <!-- Priority Filter Chips -->
+          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs">
+            <span class="text-slate-500 text-[11px] font-semibold shrink-0">Prioridad:</span>
+            <button onclick="setTaskFilter('priority', 'all')" id="task-filter-pri-all" class="px-2.5 py-1 rounded-lg font-bold bg-slate-800 text-white transition-all">
+              Todas
+            </button>
+            <button onclick="setTaskFilter('priority', 'high')" id="task-filter-pri-high" class="px-2.5 py-1 rounded-lg font-medium text-slate-400 hover:text-rose-400 bg-slate-900 border border-slate-800 transition-all">
+              🔴 Alta
+            </button>
+            <button onclick="setTaskFilter('priority', 'medium')" id="task-filter-pri-medium" class="px-2.5 py-1 rounded-lg font-medium text-slate-400 hover:text-amber-400 bg-slate-900 border border-slate-800 transition-all">
+              🟡 Media
+            </button>
+            <button onclick="setTaskFilter('priority', 'low')" id="task-filter-pri-low" class="px-2.5 py-1 rounded-lg font-medium text-slate-400 hover:text-emerald-400 bg-slate-900 border border-slate-800 transition-all">
+              🟢 Baja
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Tasks List Container -->
+      <div id="tasks-list-container" class="space-y-2.5">
+        <!-- Rendered via JS -->
+      </div>
+
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 3: JOURNAL & BITÁCORA ("Cosas que he hecho")             -->
+    <!-- ============================================================= -->
+    <section id="view-journal" class="hidden space-y-4 sm:space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        
+        <!-- Daily Journal Editor Panel -->
+        <div class="lg:col-span-2 glass-panel rounded-2xl p-4 sm:p-6 space-y-4 shadow-xl border border-slate-800">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h2 class="text-base sm:text-lg font-extrabold text-white flex items-center gap-2">
+                <span>📖</span> Bitácora & Registro Diario
+              </h2>
+              <p class="text-xs text-slate-400 mt-0.5">Anota un resumen de tus actividades, logros y reflexiones del día</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <input type="date" id="journal-date-input" class="px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+              <button onclick="setJournalToToday()" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600 hover:text-white border border-indigo-500/30 transition-all">
+                Hoy
+              </button>
+            </div>
+          </div>
+
+          <!-- Date Title Badge -->
+          <div class="flex items-center justify-between">
+            <span id="journal-current-date-title" class="text-xs sm:text-sm font-bold text-indigo-300 capitalize">
+              Cargando fecha...
+            </span>
+            <span id="journal-save-status" class="text-[11px] text-slate-500">
+              Guardado
+            </span>
+          </div>
+
+          <!-- Textarea / Editor -->
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold text-slate-300">
+              ¿Qué has hecho hoy? (Actividades realizadas, notas rápidas, bitácora):
+            </label>
+            <textarea id="journal-content-input" rows="8" placeholder="• Proyecto completado: Terminé la integración de notificaciones push&#10;• Deporte: Salí a correr 5km&#10;• Lectura: 25 páginas del libro&#10;• Notas personales o reflexiones..." class="w-full p-4 bg-slate-900/90 border border-slate-700 rounded-2xl text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 leading-relaxed font-sans"></textarea>
+          </div>
+
+          <!-- Summary / Mood Row -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Resumen corto / Frase del día:</label>
+              <input type="text" id="journal-summary-input" placeholder="Ej. Día muy productivo con lanzamientos clave" class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Estado de ánimo:</label>
+              <select id="journal-mood-input" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+                <option value="⚡ Productivo">⚡ Productivo y enfocado</option>
+                <option value="🌟 Excelente">🌟 Excelente / Feliz</option>
+                <option value="🧘 En calma">🧘 En calma / Relajado</option>
+                <option value="🏃 Ocupado">🏃 Ocupado / Acelerado</option>
+                <option value="☕ Normal">☕ Normal</option>
+                <option value="😴 Cansado">😴 Cansado</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+            <button onclick="saveJournalEntry()" id="btn-save-journal" class="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
+              <span>💾</span>
+              <span>Guardar Bitácora</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Recent Entries Timeline / History -->
+        <div class="glass-panel rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-lg border border-slate-800 h-fit">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+              <span>📜</span> Entradas Recientes
+            </h3>
+            <button onclick="loadJournalEntries()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline">
+              Actualizar
+            </button>
+          </div>
+
+          <div id="journal-history-list" class="space-y-2.5 max-h-[500px] overflow-y-auto pr-1 no-scrollbar">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 4: LIST VIEW ("PRÓXIMOS EVENTOS")                        -->
+    <!-- ============================================================= -->
     <section id="view-list" class="hidden space-y-4 sm:space-y-6">
       
       <!-- Filters & Search Bar -->
@@ -211,7 +419,9 @@
 
     </section>
 
-    <!-- VIEW 3: SETTINGS & IOS CONFIGURATION -->
+    <!-- ============================================================= -->
+    <!-- VIEW 5: SETTINGS & IOS CONFIGURATION                          -->
+    <!-- ============================================================= -->
     <section id="view-settings" class="hidden space-y-4 sm:space-y-6">
       
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -271,7 +481,7 @@
                 <li>Instala <b>ntfy</b> gratis desde la <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" class="text-indigo-400 underline font-semibold">App Store de iOS</a>.</li>
                 <li>Toca el botón <b>+</b> para suscribirte a un tema.</li>
                 <li>Escribe el mismo topic configurado en tu <code>.env</code> (ej: <code>mi_calendario_secreto_hector</code>).</li>
-                <li>¡Listo! Recibirás avisos nativos con sonido.</li>
+                <li>¡Listo! Recibirás avisos nativos con sonido para eventos y tareas pendientes.</li>
               </ol>
             </div>
 
@@ -287,10 +497,9 @@
 
             <!-- Triggers Info -->
             <div class="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-[10px] sm:text-[11px] text-indigo-200">
-              <p class="font-bold mb-0.5">⏰ 3 Disparos automáticos por evento:</p>
-              <p>• <b>7 días antes:</b> a las 09:00 AM hora local</p>
-              <p>• <b>1 día antes:</b> a las 09:00 AM hora local</p>
-              <p>• <b>Mismo día:</b> a la hora exacta (o a las 08:00 AM si es todo el día)</p>
+              <p class="font-bold mb-0.5">⏰ Disparos automáticos:</p>
+              <p>• <b>Eventos:</b> 7 días antes (09:00), 1 día antes (09:00) y el día de inicio.</p>
+              <p>• <b>Tareas pendientes:</b> Al vencer su fecha límite configurada.</p>
             </div>
           </div>
         </div>
@@ -301,7 +510,7 @@
       <div class="glass-panel rounded-2xl p-4 sm:p-6 border border-slate-800 shadow-lg">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-xs sm:text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <span>📜</span> Historial de Notificaciones
+            <span>📜</span> Historial de Notificaciones Disparadas
           </h3>
           <button onclick="loadLogs()" class="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium">
             Actualizar
@@ -316,9 +525,11 @@
 
   </main>
 
-  <!-- iOS NATIVE-LIKE BOTTOM NAVIGATION TAB BAR (Mobile Only) -->
+  <!-- ============================================================= -->
+  <!-- iOS NATIVE-LIKE BOTTOM NAVIGATION TAB BAR (Mobile Only)       -->
+  <!-- ============================================================= -->
   <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 glass-bottom-bar safe-bottom">
-    <div class="grid grid-cols-4 items-center h-14 px-2">
+    <div class="grid grid-cols-5 items-center h-14 px-1.5">
       
       <!-- Tab 1: Calendario -->
       <button onclick="switchView('calendar')" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 py-1 text-indigo-400" data-view="calendar">
@@ -328,25 +539,33 @@
         <span class="text-[10px] font-bold">Mes</span>
       </button>
 
-      <!-- Tab 2: Próximos -->
-      <button onclick="switchView('list')" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 py-1 text-slate-400 hover:text-white" data-view="list">
+      <!-- Tab 2: Tareas -->
+      <button onclick="switchView('tasks')" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 py-1 text-slate-400 hover:text-white" data-view="tasks">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
-        <span class="text-[10px] font-semibold">Próximos</span>
+        <span class="text-[10px] font-semibold">Tareas</span>
       </button>
 
-      <!-- Tab 3: Quick Add Action -->
-      <button onclick="openEventModal()" class="flex flex-col items-center justify-center py-1">
-        <div class="w-10 h-10 -mt-5 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/40 text-white active:scale-90 transition-transform">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8" d="M12 4v16m8-8H4" />
+      <!-- Tab 3: Quick Action Central FAB -->
+      <button onclick="openQuickActionSheet()" class="flex flex-col items-center justify-center py-1">
+        <div class="w-11 h-11 -mt-5 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/40 text-white active:scale-90 transition-transform">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M12 4v16m8-8H4" />
           </svg>
         </div>
-        <span class="text-[10px] font-bold text-slate-300 mt-0.5">Crear</span>
+        <span class="text-[9px] font-bold text-slate-300 mt-0.5">Crear</span>
       </button>
 
-      <!-- Tab 4: Ajustes -->
+      <!-- Tab 4: Bitácora -->
+      <button onclick="switchView('journal')" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 py-1 text-slate-400 hover:text-white" data-view="journal">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+        <span class="text-[10px] font-semibold">Diario</span>
+      </button>
+
+      <!-- Tab 5: Ajustes -->
       <button onclick="switchView('settings')" class="mobile-nav-btn flex flex-col items-center justify-center gap-0.5 py-1 text-slate-400 hover:text-white" data-view="settings">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -358,7 +577,9 @@
     </div>
   </nav>
 
-  <!-- EVENT MODAL (BOTTOM SHEET ON MOBILE, MODAL ON DESKTOP) -->
+  <!-- ============================================================= -->
+  <!-- MODAL 1: EVENT MODAL (Multidía + Inicio/Fin)                  -->
+  <!-- ============================================================= -->
   <div id="event-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm">
     <div class="mobile-bottom-sheet glass-panel rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-lg w-full border border-slate-700/60 shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto safe-bottom">
       
@@ -381,7 +602,7 @@
         <!-- Title -->
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1">Título del Evento *</label>
-          <input type="text" id="event-title" required placeholder="Ej. Cita dentista, Cumpleaños de Lucas..." class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          <input type="text" id="event-title" required placeholder="Ej. Vacaciones en la playa, Viaje a Madrid, Conferencia..." class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
         </div>
 
         <!-- Category & Color Row -->
@@ -407,16 +628,33 @@
           </div>
         </div>
 
-        <!-- All Day Toggle -->
-        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/70 border border-slate-800">
-          <div>
-            <span class="text-xs font-bold text-slate-200">Todo el día</span>
-            <p id="allday-hint" class="text-[10px] text-slate-400">Aviso a las 08:00 AM del día del evento.</p>
+        <!-- All Day & Multiday Toggles Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          
+          <!-- All Day Toggle -->
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div>
+              <span class="text-xs font-bold text-slate-200">Todo el día</span>
+              <p class="text-[9px] text-slate-400">Aviso 08:00 AM</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="event-allday" class="sr-only peer">
+              <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="event-allday" class="sr-only peer">
-            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-          </label>
+
+          <!-- Multi-day Range Toggle -->
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/70 border border-slate-800">
+            <div>
+              <span class="text-xs font-bold text-slate-200">Multidía (Rango)</span>
+              <p class="text-[9px] text-slate-400">Abarca varios días</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="event-is-multiday" class="sr-only peer">
+              <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+
         </div>
 
         <!-- Date & Time Row -->
@@ -431,25 +669,22 @@
           </div>
         </div>
 
+        <!-- Dynamic Multi-day duration info badge -->
+        <div id="multiday-info-badge" class="hidden p-2 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-[11px] text-indigo-300 items-center gap-1.5">
+          <span>🗓️</span>
+          <span id="multiday-info-text">Este evento abarcará varios días en el calendario.</span>
+        </div>
+
         <!-- Location -->
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1">Ubicación (Opcional)</label>
-          <input type="text" id="event-location" placeholder="Ej. Calle Mayor 5, Hospital, Online..." class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          <input type="text" id="event-location" placeholder="Ej. Hotel Sol, Oficina Central, Online..." class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
         </div>
 
         <!-- Description -->
         <div>
           <label class="block text-xs font-bold text-slate-300 mb-1">Notas / Recordatorios</label>
-          <textarea id="event-desc" rows="2" placeholder="Detalles o anotaciones adicionales..." class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
-        </div>
-
-        <!-- Notification Triggers Info -->
-        <div class="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-[10px] text-indigo-300 flex items-start gap-2">
-          <span>🔔</span>
-          <div>
-            <span class="font-bold">Avisos automáticos a iPhone:</span>
-            <p>Sonará <b>7 días antes (09:00)</b>, <b>1 día antes (09:00)</b> y el <b>día del evento</b>.</p>
-          </div>
+          <textarea id="event-desc" rows="2" placeholder="Detalles, notas de viaje, enlaces..." class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
         </div>
 
         <!-- Form Actions -->
@@ -464,6 +699,127 @@
 
       </form>
 
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL 2: TASK MODAL (Crear / Editar Tarea o Hábito)          -->
+  <!-- ============================================================= -->
+  <div id="task-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm">
+    <div class="mobile-bottom-sheet glass-panel rounded-t-3xl sm:rounded-3xl p-5 sm:p-7 max-w-lg w-full border border-slate-700/60 shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto safe-bottom">
+      
+      <!-- iOS Drag Handle -->
+      <div class="drag-handle sm:hidden"></div>
+
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 id="task-modal-title" class="text-base sm:text-lg font-extrabold text-white">Nueva Tarea</h3>
+        <button onclick="closeTaskModal()" class="p-1.5 rounded-full text-slate-400 hover:text-white bg-slate-900 border border-slate-800 transition-all">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Form -->
+      <form id="task-form" class="space-y-3.5">
+        
+        <!-- Task Title -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Título de la Tarea *</label>
+          <input type="text" id="task-title" required placeholder="Ej. Pagar seguro del coche, Enviar informe mensual..." class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- Priority & Category Row -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Prioridad</label>
+            <select id="task-priority" class="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+              <option value="medium">🟡 Media</option>
+              <option value="high">🔴 Alta</option>
+              <option value="low">🟢 Baja</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Categoría</label>
+            <select id="task-category" class="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+              <option value="Trabajo">💼 Trabajo</option>
+              <option value="Personal">👤 Personal</option>
+              <option value="Salud">🏥 Salud</option>
+              <option value="Cumpleaños">🎂 Cumpleaños</option>
+              <option value="Finanzas">💳 Finanzas</option>
+              <option value="Ocio">🎉 Ocio</option>
+              <option value="General" selected>📌 General</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Due Date & Time -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Fecha Límite (Opcional)</label>
+          <input type="datetime-local" id="task-due-date" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500">
+          <p class="text-[10px] text-slate-400 mt-1">Si defines fecha límite, recibirás un aviso push en tu iPhone cuando venza.</p>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Notas adicionales (Opcional)</label>
+          <textarea id="task-desc" rows="2" placeholder="Sub-tareas, pasos a seguir, detalles..." class="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeTaskModal()" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-900 transition-all active:scale-95">
+            Cancelar
+          </button>
+          <button type="submit" class="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
+            Guardar Tarea
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- ACTION SHEET: QUICK CREATE (Mobile Center FAB)                -->
+  <!-- ============================================================= -->
+  <div id="quick-action-sheet" class="fixed inset-0 z-50 hidden items-end justify-center p-0 bg-black/70 backdrop-blur-sm" onclick="if(event.target.id === 'quick-action-sheet') closeQuickActionSheet()">
+    <div class="mobile-bottom-sheet glass-panel rounded-t-3xl p-5 w-full border border-slate-700 shadow-2xl space-y-3.5 safe-bottom">
+      <div class="drag-handle"></div>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider text-center">¿Qué deseas crear?</h3>
+      
+      <div class="space-y-2 pt-1">
+        <button onclick="closeQuickActionSheet(); openEventModal()" class="w-full p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center gap-3 active:scale-95 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-lg">🗓️</div>
+          <div class="text-left">
+            <p class="text-sm font-bold text-white">Nuevo Evento</p>
+            <p class="text-[11px] text-slate-400">Reunión, viaje multidía, cita con horario y recordatorio</p>
+          </div>
+        </button>
+
+        <button onclick="closeQuickActionSheet(); openTaskModal()" class="w-full p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center gap-3 active:scale-95 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center text-lg">📋</div>
+          <div class="text-left">
+            <p class="text-sm font-bold text-white">Nueva Tarea / Hábito</p>
+            <p class="text-[11px] text-slate-400">Pendiente con checkbox y fecha límite</p>
+          </div>
+        </button>
+
+        <button onclick="closeQuickActionSheet(); switchView('journal')" class="w-full p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center gap-3 active:scale-95 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center text-lg">📖</div>
+          <div class="text-left">
+            <p class="text-sm font-bold text-white">Escribir en Bitácora</p>
+            <p class="text-[11px] text-slate-400">Anotar resumen del día o actividades realizadas</p>
+          </div>
+        </button>
+      </div>
+
+      <button onclick="closeQuickActionSheet()" class="w-full py-3 rounded-2xl bg-slate-800 text-xs font-bold text-slate-300">
+        Cancelar
+      </button>
     </div>
   </div>
 
