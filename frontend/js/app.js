@@ -977,6 +977,32 @@ function setupTouchGestures() {
   }, { passive: true });
 }
 
+// Force update helper for iPhone / Safari PWA
+async function forceAppUpdate() {
+  showToast('Limpiando caché y recargando...', 'info');
+  if ('caches' in window) {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch (e) {
+      console.warn('Error clearing caches:', e);
+    }
+  }
+  if ('serviceWorker' in navigator) {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        await reg.unregister();
+      }
+    } catch (e) {
+      console.warn('Error unregistering SW:', e);
+    }
+  }
+  setTimeout(() => {
+    window.location.href = '/?v=' + Date.now();
+  }, 400);
+}
+
 // -------------------------------------------------------------
 // APP INITIALIZATION
 // -------------------------------------------------------------
@@ -986,9 +1012,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTouchGestures();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('PWA ServiceWorker registrado:', reg.scope))
-      .catch(err => console.log('SW registration failed:', err));
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      // Force check for updated SW immediately
+      reg.update();
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showToast('¡Nueva versión detectada! Actualizando...', 'info');
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            }
+          });
+        }
+      });
+    }).catch(err => console.log('SW registration error:', err));
   }
 
   // Setup View Switchers

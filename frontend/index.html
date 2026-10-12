@@ -40,7 +40,7 @@
   </script>
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.1.0">
 </head>
 <body class="bg-[#030712] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
 
@@ -89,6 +89,11 @@
 
       <!-- Quick Action Buttons -->
       <div class="flex items-center gap-2">
+        <button onclick="forceAppUpdate()" title="Forzar recarga y limpiar caché en iPhone" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700/80 transition-all active:scale-95">
+          <span>🔄</span>
+          <span class="hidden sm:inline">Recargar</span>
+        </button>
+
         <button id="btn-test-push" title="Probar envío push a iPhone" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800/90 hover:bg-slate-700 text-indigo-300 border border-slate-700/80 transition-all active:scale-95">
           <span>📲</span>
           <span class="hidden sm:inline">Probar Push</span>
@@ -465,6 +470,16 @@
               📲 Enviar Push de Prueba
             </button>
           </div>
+
+          <div class="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-bold text-white">Caché y PWA en iPhone</p>
+              <p class="text-[11px] text-slate-400">Elimina la caché local y recarga la última versión de la app</p>
+            </div>
+            <button onclick="forceAppUpdate()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 shadow-md transition-all active:scale-95">
+              🔄 Limpiar Caché y Recargar
+            </button>
+          </div>
         </div>
 
         <!-- Guide for iPhone Notifications Card -->
@@ -826,8 +841,8 @@
   <!-- Toast Notification Container -->
   <div id="toast-container" class="fixed top-4 sm:top-auto sm:bottom-5 right-3 sm:right-5 z-50 flex flex-col gap-2 max-w-sm w-[calc(100%-24px)] sm:w-full pointer-events-none"></div>
 
-  <!-- Scripts -->
-  <script src="/static/js/app.js"></script>
-  <script src="/static/js/calendar.js"></script>
+  <!-- Scripts with cache busters -->
+  <script src="/static/js/app.js?v=2.1.0"></script>
+  <script src="/static/js/calendar.js?v=2.1.0"></script>
 </body>
 </html>

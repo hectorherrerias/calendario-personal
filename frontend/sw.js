@@ -1,15 +1,16 @@
-const CACHE_NAME = 'calendario-personal-v2';
+const CACHE_NAME = 'calendario-personal-v2.1';
 const ASSETS = [
   '/',
-  '/static/css/style.css',
-  '/static/js/app.js',
-  '/static/js/calendar.js',
+  '/static/css/style.css?v=2.1.0',
+  '/static/js/app.js?v=2.1.0',
+  '/static/js/calendar.js?v=2.1.0',
   '/manifest.json',
   '/static/icons/icon-192.svg',
   '/static/icons/icon-512.svg'
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS).catch((err) => {
@@ -17,7 +18,6 @@ self.addEventListener('install', (event) => {
       });
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -26,21 +26,33 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('Eliminando caché antigua:', key);
             return caches.delete(key);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Network-first strategy for instant freshness on iPhone & Safari
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests that are not API calls
-  if (event.request.method === 'GET' && !event.request.url.includes('/api/')) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => caches.match(event.request))
-    );
-  }
+  if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('/api/')) return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      })
+  );
 });

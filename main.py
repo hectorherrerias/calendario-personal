@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="API y Servidor Web de Gestión de Calendario y Notificaciones Push Autónomo",
+    description="API y Servidor Web de Gestión de Calendario, Tareas y Bitácora Autónomo",
     lifespan=lifespan
 )
 
@@ -60,17 +60,23 @@ FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
+    NO_CACHE_HEADERS = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
+
     @app.get("/", include_in_schema=False)
     async def serve_index():
-        return FileResponse(FRONTEND_DIR / "index.html")
+        return FileResponse(FRONTEND_DIR / "index.html", headers=NO_CACHE_HEADERS)
 
     @app.get("/manifest.json", include_in_schema=False)
     async def serve_manifest():
-        return FileResponse(FRONTEND_DIR / "manifest.json", media_type="application/manifest+json")
+        return FileResponse(FRONTEND_DIR / "manifest.json", media_type="application/manifest+json", headers=NO_CACHE_HEADERS)
 
     @app.get("/sw.js", include_in_schema=False)
     async def serve_sw():
-        return FileResponse(FRONTEND_DIR / "sw.js", media_type="application/javascript")
+        return FileResponse(FRONTEND_DIR / "sw.js", media_type="application/javascript", headers=NO_CACHE_HEADERS)
 
 if __name__ == "__main__":
     import uvicorn
