@@ -210,6 +210,14 @@ function selectDate(dateStr) {
   state.selectedDate = dateStr;
   renderCalendarGrid();
   renderSelectedDayPanel();
+
+  // On mobile devices, smoothly bring the selected day panel into view
+  if (window.innerWidth < 1024) {
+    const details = document.getElementById('selected-day-details');
+    if (details) {
+      details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
 }
 
 // -------------------------------------------------------------
@@ -291,7 +299,7 @@ function renderSelectedDayPanel() {
       </div>
     `;
   } else {
-    html += '<div class="space-y-2 max-h-[220px] overflow-y-auto pr-0.5 no-scrollbar">';
+    html += '<div class="space-y-2 sm:max-h-[300px] sm:overflow-y-auto pr-0.5 no-scrollbar">';
     dayEvents.forEach(ev => {
       const status = getEventDayStatus(ev, cellDate);
       const evStart = parseDate(ev.start_time);
@@ -365,7 +373,7 @@ function renderSelectedDayPanel() {
       </div>
     `;
   } else {
-    html += '<div class="space-y-1.5 max-h-[160px] overflow-y-auto pr-0.5 no-scrollbar">';
+    html += '<div class="space-y-2 sm:max-h-[280px] sm:overflow-y-auto pr-0.5 no-scrollbar">';
     dayTasks.forEach(task => {
       const priorityColors = {
         high: 'text-rose-400 bg-rose-500/15 border-rose-500/30',
@@ -375,22 +383,24 @@ function renderSelectedDayPanel() {
       const priClass = priorityColors[task.priority] || priorityColors.medium;
 
       html += `
-        <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2 transition-all">
-          <div class="flex items-center gap-2 min-w-0 flex-1">
-            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})" class="task-checkbox" title="Marcar como completada">
-            <span class="task-title text-xs font-medium truncate ${task.completed ? 'completed' : 'text-slate-200'}">
+        <div id="day-task-${task.id}" class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90 hover:border-slate-700/80 flex items-center justify-between gap-2.5 transition-all shadow-sm ${task.completed ? 'opacity-60 bg-slate-950/40' : ''}">
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="touch-checkbox-hitbox shrink-0">
+              <input type="checkbox" id="chk-day-${task.id}" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id}, event)" class="task-checkbox" title="Marcar como completada">
+            </div>
+            <span id="title-day-${task.id}" class="task-title text-xs sm:text-sm font-semibold truncate ${task.completed ? 'completed text-slate-500' : 'text-slate-100'}">
               ${escapeHtml(task.title)}
             </span>
-            <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase border ${priClass}">
+            <span class="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase border shrink-0 ${priClass}">
               ${task.priority}
             </span>
           </div>
 
           <div class="flex items-center gap-1 shrink-0">
-            <button onclick='openTaskModal(${JSON.stringify(task).replace(/'/g, "&#39;")})' title="Editar" class="p-1 rounded text-slate-400 hover:text-indigo-400 text-xs">
+            <button onclick='openTaskModal(${JSON.stringify(task).replace(/'/g, "&#39;")})' title="Editar" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 active:scale-90 text-xs">
               ✏️
             </button>
-            <button onclick="confirmDeleteTask(${task.id}, '${escapeHtml(task.title)}')" title="Eliminar" class="p-1 rounded text-slate-400 hover:text-rose-400 text-xs">
+            <button onclick="confirmDeleteTask(${task.id}, '${escapeHtml(task.title)}')" title="Eliminar" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 active:scale-90 text-xs">
               🗑️
             </button>
           </div>
@@ -478,14 +488,16 @@ function renderTasksView() {
     }[task.priority] || '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-400">Media</span>';
 
     html += `
-      <div class="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-800/80 hover:border-slate-700/80 transition-all flex items-start justify-between gap-3 shadow-md ${task.completed ? 'opacity-60 bg-slate-950/40' : ''}">
+      <div id="task-card-${task.id}" class="glass-card rounded-2xl p-3.5 sm:p-4 border border-slate-800/80 hover:border-slate-700/80 transition-all flex items-start justify-between gap-2.5 sm:gap-3 shadow-md ${task.completed ? 'opacity-60 bg-slate-950/40' : ''}">
         
-        <div class="flex items-start gap-3 min-w-0 flex-1">
-          <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})" class="task-checkbox mt-0.5" title="Marcar como completada">
+        <div class="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+          <div class="touch-checkbox-hitbox shrink-0">
+            <input type="checkbox" id="chk-main-${task.id}" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id}, event)" class="task-checkbox mt-0.5" title="Marcar como completada">
+          </div>
           
           <div class="min-w-0 flex-1 space-y-1">
             <div class="flex items-center gap-2 flex-wrap">
-              <h4 class="task-title text-sm sm:text-base font-bold text-white break-words ${task.completed ? 'completed' : ''}">
+              <h4 id="title-main-${task.id}" class="task-title text-sm sm:text-base font-bold text-white break-words ${task.completed ? 'completed text-slate-400' : ''}">
                 ${escapeHtml(task.title)}
               </h4>
               ${priorityBadge}

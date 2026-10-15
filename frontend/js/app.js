@@ -272,8 +272,11 @@ async function loadEvents() {
   }
 }
 
-async function loadTasks() {
+async function loadTasks(preserveScroll = true) {
   try {
+    const mainEl = document.getElementById('main-content');
+    const savedScrollTop = preserveScroll && mainEl ? mainEl.scrollTop : 0;
+
     let query = '';
     const params = [];
     if (state.taskFilters.status === 'pending') params.push('completed=false');
@@ -294,6 +297,10 @@ async function loadTasks() {
     // Also re-render day panel if on calendar view so day tasks are synced
     if (state.activeView === 'calendar') {
       renderSelectedDayPanel();
+    }
+
+    if (preserveScroll && mainEl && savedScrollTop > 0) {
+      mainEl.scrollTop = savedScrollTop;
     }
   } catch (err) {
     console.error("Error cargando tareas:", err);
@@ -399,6 +406,8 @@ function switchView(viewName) {
     if (el) el.classList.toggle('hidden', name !== viewName);
   });
 
+  const mainEl = document.getElementById('main-content');
+  if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (viewName === 'tasks') {
@@ -727,14 +736,76 @@ async function handleQuickTaskSubmit(e) {
   }
 }
 
-async function toggleTask(taskId) {
+async function toggleTask(taskId, event) {
+  if (event) {
+    event.stopPropagation();
+  }
+
+  // 1. Find the task in local state for optimistic update
+  const task = state.tasks.find(t => t.id === taskId);
+  const newCompleted = task ? !task.completed : true;
+  if (task) {
+    task.completed = newCompleted;
+  }
+
+  // 2. Instant DOM updates with animated visual feedback
+  const dayChk = document.getElementById(`chk-day-${taskId}`);
+  const mainChk = document.getElementById(`chk-main-${taskId}`);
+  const dayTitle = document.getElementById(`title-day-${taskId}`);
+  const mainTitle = document.getElementById(`title-main-${taskId}`);
+  const dayCard = document.getElementById(`day-task-${taskId}`);
+  const mainCard = document.getElementById(`task-card-${taskId}`);
+
+  if (dayChk) dayChk.checked = newCompleted;
+  if (mainChk) mainChk.checked = newCompleted;
+
+  if (dayTitle) {
+    dayTitle.classList.toggle('completed', newCompleted);
+    dayTitle.classList.toggle('text-slate-500', newCompleted);
+    dayTitle.classList.toggle('text-slate-100', !newCompleted);
+  }
+  if (mainTitle) {
+    mainTitle.classList.toggle('completed', newCompleted);
+    mainTitle.classList.toggle('text-slate-400', newCompleted);
+  }
+  if (dayCard) {
+    dayCard.classList.toggle('opacity-60', newCompleted);
+    dayCard.classList.toggle('bg-slate-950/40', newCompleted);
+  }
+  if (mainCard) {
+    mainCard.classList.toggle('opacity-60', newCompleted);
+    mainCard.classList.toggle('bg-slate-950/40', newCompleted);
+  }
+
+  // Update stats counters immediately
+  updateTaskStats();
+
   try {
     const updated = await apiPatch(`/tasks/${taskId}/toggle`);
     const statusMsg = updated.completed ? 'Tarea completada ✓' : 'Tarea reabierta';
     showToast(statusMsg, updated.completed ? 'success' : 'info');
-    await loadTasks();
+
+    // If an exclusive status filter is active, reload preserving scroll
+    if (state.activeView === 'tasks' && (state.taskFilters.status === 'pending' || state.taskFilters.status === 'completed')) {
+      await loadTasks(true);
+    } else {
+      // Background sync without re-rendering the whole panel
+      const query = (state.taskFilters.priority && state.taskFilters.priority !== 'all') ? `?priority=${encodeURIComponent(state.taskFilters.priority)}` : '';
+      state.tasks = await apiGet(`/tasks${query}`);
+      updateTaskStats();
+      if (state.activeView === 'calendar') {
+        renderCalendarGrid();
+      }
+    }
   } catch (err) {
-    // Handled
+    // Rollback optimistic update on error
+    if (task) task.completed = !newCompleted;
+    if (dayChk) dayChk.checked = !newCompleted;
+    if (mainChk) mainChk.checked = !newCompleted;
+    if (dayTitle) dayTitle.classList.toggle('completed', !newCompleted);
+    if (mainTitle) mainTitle.classList.toggle('completed', !newCompleted);
+    updateTaskStats();
+    showToast('Error al actualizar tarea', 'error');
   }
 }
 
@@ -1107,6 +1178,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       loadEvents();
     });
   });
+
+  // Mobile keyboard handling via Visual Viewport API
+  // Hides bottom navigation when virtual keyboard opens so it doesn't cover content or shift upwards
+  if (window.visualViewport) {
+    const handleViewportChange = () => {
+      const bottomNav = document.getElementById('mobile-bottom-nav');
+      if (!bottomNav) return;
+      const isKeyboardOpen = window.visualViewport.height < window.innerHeight * 0.78;
+      if (isKeyboardOpen) {
+        bottomNav.style.transform = 'translateY(100%)';
+        bottomNav.style.opacity = '0';
+        bottomNav.style.pointerEvents = 'none';
+      } else {
+        bottomNav.style.transform = '';
+        bottomNav.style.opacity = '';
+        bottomNav.style.pointerEvents = '';
+      }
+    };
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+  }
 
   // Initial load
   const todayStr = formatDateToIsoString(new Date());

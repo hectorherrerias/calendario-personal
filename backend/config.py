@@ -12,7 +12,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 class Settings(BaseSettings):
     APP_NAME: str = "Calendario & Recordatorios Personal"
-    APP_VERSION: str = "2.0.0"
+    APP_VERSION: str = "2.2.0"
     DEBUG: bool = False
     
     # Timezone (Default Europe/Madrid)

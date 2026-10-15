@@ -1,5 +1,5 @@
 /* ==============================================================================
-   CALENDARIO PERSONAL - PREMIUM MOBILE-FIRST & iOS STYLES
+   CALENDARIO PERSONAL - PREMIUM MOBILE-FIRST & NATIVE-LIKE STYLES
    ============================================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
@@ -9,43 +9,123 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  --nav-bar-height: 58px;
 }
 
-* {
+*, *::before, *::after {
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
 }
 
+/* Base Body & App Shell */
 html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
   font-family: var(--font-family);
   touch-action: manipulation;
-  overscroll-behavior-y: none;
   background-color: #030712;
   color: #f3f4f6;
-  min-height: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
-/* iOS Safe Area Helpers */
+/* ==============================================================================
+   MOBILE APP SHELL ARCHITECTURE (< 768px)
+   Prevents entire window from scrolling / bouncing so bottom bar never shifts up!
+   ============================================================================== */
+@media (max-width: 767px) {
+  html, body {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  #app-root {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  header.app-header {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 30;
+  }
+
+  main#main-content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    padding-bottom: calc(var(--nav-bar-height) + env(safe-area-inset-bottom, 0px) + 24px) !important;
+  }
+
+  /* Bottom bar stays rock-solid pinned at the bottom */
+  nav#mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 40 !important;
+    height: calc(var(--nav-bar-height) + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+    background: rgba(10, 15, 29, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Desktop Styles (>= 768px) */
+@media (min-width: 768px) {
+  #app-root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  main#main-content {
+    flex: 1 0 auto;
+    padding-bottom: 3rem !important;
+  }
+}
+
+/* Safe Area Helpers */
 .safe-top {
-  padding-top: max(16px, env(safe-area-inset-top));
+  padding-top: max(12px, env(safe-area-inset-top));
 }
 .safe-bottom {
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .safe-bottom-nav {
-  padding-bottom: calc(68px + max(14px, env(safe-area-inset-bottom)));
+  padding-bottom: calc(var(--nav-bar-height) + env(safe-area-inset-bottom, 0px) + 24px);
 }
 
-/* Glassmorphism & Translucent Bars (iOS Blur Feel) */
+/* Glassmorphism & Translucent Bars */
 .glass-header {
-  background: rgba(3, 7, 18, 0.85);
+  background: rgba(3, 7, 18, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-bottom-bar {
-  background: rgba(10, 15, 29, 0.90);
+  background: rgba(10, 15, 29, 0.94);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid rgba(255, 255, 255, 0.09);
@@ -82,15 +162,15 @@ html, body {
 }
 
 .calendar-day-cell {
-  min-height: 86px;
+  min-height: 82px;
   transition: background-color 0.15s ease, transform 0.1s ease;
   user-select: none;
 }
 
 @media (max-width: 640px) {
   .calendar-day-cell {
-    min-height: 60px;
-    padding: 3px 2px;
+    min-height: 52px;
+    padding: 2px 1px;
   }
 }
 
@@ -136,7 +216,7 @@ html, body {
     right: 0;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
-    max-height: 92vh !important;
+    max-height: 90dvh !important;
     animation: slideUpMobile 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 }
@@ -176,46 +256,76 @@ button:active {
   transform: scale(0.97);
 }
 
-/* Task Checkbox & Strike-through Animations */
+/* ==============================================================================
+   PREMIUM TOUCH-FRIENDLY TASK CHECKBOX (Crisp check, generous hit target)
+   ============================================================================== */
+.touch-checkbox-hitbox {
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .task-checkbox {
   appearance: none;
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border: 2px solid #64748b;
   border-radius: 7px;
   outline: none;
   cursor: pointer;
   display: inline-grid;
   place-content: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  background-color: transparent;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background-color: rgba(15, 23, 42, 0.6);
   flex-shrink: 0;
+  position: relative;
 }
 
 .task-checkbox:hover {
   border-color: #818cf8;
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+.task-checkbox:active {
+  transform: scale(0.90);
 }
 
 .task-checkbox:checked {
-  background-color: #6366f1;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   border-color: #6366f1;
-  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.45);
+  animation: checkboxPop 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Clean, sharp checkmark (short left, long right side) */
 .task-checkbox:checked::before {
   content: "";
-  width: 10px;
-  height: 6px;
-  border-left: 2.2px solid white;
-  border-bottom: 2.2px solid white;
-  transform: rotate(-45deg) translate(1px, -1px);
+  width: 6px;
+  height: 10px;
+  border-right: 2.2px solid #ffffff;
+  border-bottom: 2.2px solid #ffffff;
+  transform: rotate(45deg) translate(-1px, -1px);
+  display: block;
+}
+
+@keyframes checkboxPop {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.task-title {
+  transition: color 0.2s ease, text-decoration 0.2s ease, opacity 0.2s ease;
 }
 
 .task-title.completed {
   text-decoration: line-through;
-  color: #64748b;
-  transition: color 0.2s ease, text-decoration 0.2s ease;
+  color: #64748b !important;
 }
 
 /* Custom Scrollbars for Desktop */
@@ -235,3 +345,4 @@ button:active {
     background: rgba(107, 114, 128, 0.7);
   }
 }
+

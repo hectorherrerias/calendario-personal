@@ -40,12 +40,15 @@
   </script>
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=2.1.0">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.2.0">
 </head>
-<body class="bg-[#030712] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+<body class="bg-[#030712] text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
 
-  <!-- Top Navigation Bar -->
-  <header class="sticky top-0 z-30 glass-header safe-top">
+  <!-- App Root Shell Container -->
+  <div id="app-root">
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-30 glass-header safe-top app-header">
     <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
       
       <!-- Brand & Clean Live Date Clock -->
@@ -116,7 +119,7 @@
   </header>
 
   <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 safe-bottom-nav">
+  <main id="main-content" class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-6 safe-bottom-nav">
 
     <!-- ============================================================= -->
     <!-- VIEW 1: CALENDAR VIEW (Mes + Eventos Multidía + Sidebar)      -->
@@ -227,7 +230,7 @@
         <!-- Quick Add Single-Line Input -->
         <form id="quick-task-form" class="flex items-center gap-2 pt-1">
           <div class="relative flex-1">
-            <input type="text" id="quick-task-title" placeholder="Añadir tarea rápida... (ej: Comprar café, Revisar informe)" required class="w-full pl-3.5 pr-20 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+            <input type="text" id="quick-task-title" placeholder="Añadir tarea rápida..." required class="w-full pl-3.5 pr-24 py-2.5 bg-slate-900/90 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500">
             <select id="quick-task-priority" class="absolute right-1.5 top-1.5 bottom-1.5 bg-slate-800 text-[11px] text-slate-300 font-semibold px-2 rounded-lg border border-slate-700 focus:outline-none">
               <option value="medium">Media</option>
               <option value="high">Alta 🔴</option>
@@ -543,7 +546,7 @@
   <!-- ============================================================= -->
   <!-- iOS NATIVE-LIKE BOTTOM NAVIGATION TAB BAR (Mobile Only)       -->
   <!-- ============================================================= -->
-  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 glass-bottom-bar safe-bottom">
+  <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 left-0 right-0 z-40 glass-bottom-bar safe-bottom">
     <div class="grid grid-cols-5 items-center h-14 px-1.5">
       
       <!-- Tab 1: Calendario -->
@@ -563,9 +566,9 @@
       </button>
 
       <!-- Tab 3: Quick Action Central FAB -->
-      <button onclick="openQuickActionSheet()" class="flex flex-col items-center justify-center py-1">
-        <div class="w-11 h-11 -mt-5 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/40 text-white active:scale-90 transition-transform">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <button onclick="openQuickActionSheet()" class="flex flex-col items-center justify-center py-1 group" title="Crear">
+        <div class="w-11 h-11 -mt-4 rounded-full bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/40 text-white border-2 border-slate-900 active:scale-90 transition-transform">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M12 4v16m8-8H4" />
           </svg>
         </div>
@@ -591,6 +594,8 @@
 
     </div>
   </nav>
+
+  </div> <!-- /#app-root Shell -->
 
   <!-- ============================================================= -->
   <!-- MODAL 1: EVENT MODAL (Multidía + Inicio/Fin)                  -->
@@ -842,7 +847,7 @@
   <div id="toast-container" class="fixed top-4 sm:top-auto sm:bottom-5 right-3 sm:right-5 z-50 flex flex-col gap-2 max-w-sm w-[calc(100%-24px)] sm:w-full pointer-events-none"></div>
 
   <!-- Scripts with cache busters -->
-  <script src="/static/js/app.js?v=2.1.0"></script>
-  <script src="/static/js/calendar.js?v=2.1.0"></script>
+  <script src="/static/js/app.js?v=2.2.0"></script>
+  <script src="/static/js/calendar.js?v=2.2.0"></script>
 </body>
 </html>
