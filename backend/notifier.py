@@ -1,5 +1,6 @@
 import logging
 import httpx
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from backend.config import settings
 from backend.database import engine
@@ -15,19 +16,38 @@ async def send_ntfy(
     tags: Optional[List[str]] = None,
     click_url: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Send push notification to ntfy.sh topic (instant delivery to iOS ntfy app)"""
+    """Send push notification to ntfy.sh topic (instant delivery to iOS ntfy app) via JSON API"""
     if not settings.NTFY_TOPIC:
         return {"success": False, "error": "NTFY_TOPIC no configurado en variables de entorno"}
 
-    url = f"{settings.NTFY_SERVER_URL.rstrip('/')}/{settings.NTFY_TOPIC}"
-    headers = {
-        "Title": title.encode("utf-8").decode("latin-1", errors="ignore"),
-        "Priority": priority,
+    url = f"{settings.NTFY_SERVER_URL.rstrip('/')}"
+
+    # Map priority strings to ntfy numeric levels (1: min, 2: low, 3: default, 4: high, 5: urgent)
+    priority_map = {
+        "min": 1,
+        "low": 2,
+        "default": 3,
+        "medium": 3,
+        "high": 4,
+        "urgent": 5,
+        "max": 5
+    }
+    numeric_priority = priority_map.get(str(priority).lower(), 3)
+
+    payload = {
+        "topic": settings.NTFY_TOPIC,
+        "title": title,
+        "message": message,
+        "priority": numeric_priority,
     }
     if tags:
-        headers["Tags"] = ",".join(tags)
+        payload["tags"] = tags
     if click_url or settings.APP_URL:
-        headers["Click"] = click_url or settings.APP_URL
+        payload["click"] = click_url or settings.APP_URL
+
+    headers = {
+        "Content-Type": "application/json; charset=utf-8"
+    }
     if settings.NTFY_AUTH_TOKEN:
         headers["Authorization"] = f"Bearer {settings.NTFY_AUTH_TOKEN}"
 
@@ -35,7 +55,7 @@ async def send_ntfy(
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 url,
-                content=message.encode("utf-8"),
+                json=payload,
                 headers=headers
             )
             if response.status_code in (200, 201, 202):

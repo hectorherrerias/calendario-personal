@@ -40,7 +40,7 @@
   </script>
 
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/css/style.css?v=2.2.0">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.3.0">
 </head>
 <body class="bg-[#030712] text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
 
@@ -464,6 +464,38 @@
             </div>
           </div>
 
+          <!-- In-App Notification Topic Config Form -->
+          <form onsubmit="saveNotificationSettings(event)" class="p-3 sm:p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-white flex items-center gap-1.5">
+                <span>🔔</span> Canal de Notificaciones iPhone (ntfy.sh)
+              </h4>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                Push iOS
+              </span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-300 mb-1">Nombre de tu Canal (Topic Privado):</label>
+              <div class="flex gap-2">
+                <input type="text" id="input-ntfy-topic" placeholder="ej: hector_calendario_2026" required class="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono">
+                <button type="submit" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-all active:scale-95 shrink-0">
+                  💾 Guardar
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1">Este es el tema único al que te suscribes en la app ntfy de tu iPhone.</p>
+            </div>
+
+            <!-- Direct 1-tap link to subscribe in iOS ntfy app -->
+            <div class="pt-1">
+              <a id="btn-open-ntfy-app" href="https://ntfy.sh/hector_calendario_2026" target="_blank" class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 shadow-sm transition-all active:scale-95">
+                <span>📲</span>
+                <span>Tocar para Abrir y Suscribirse en ntfy</span>
+                <span>↗</span>
+              </a>
+            </div>
+          </form>
+
           <div class="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <p class="text-xs font-bold text-white">Comprobar entrega en iPhone</p>
@@ -488,35 +520,41 @@
         <!-- Guide for iPhone Notifications Card -->
         <div class="glass-panel rounded-2xl p-4 sm:p-6 border border-slate-800 space-y-4 shadow-lg">
           <h3 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-            <span>📱</span> Configuración Push en tu iPhone
+            <span>📱</span> ¿Cómo recibir las notificaciones en tu iPhone?
           </h3>
 
           <div class="space-y-3 text-xs text-slate-300">
-            <!-- ntfy Method -->
-            <div class="p-3 rounded-xl bg-slate-900/80 border border-indigo-500/20">
-              <h4 class="font-bold text-indigo-300 text-xs sm:text-sm mb-1">Opción A: App Oficial ntfy (Recomendada)</h4>
-              <ol class="list-decimal list-inside space-y-1 text-slate-400 mt-1.5 text-[11px] sm:text-xs">
-                <li>Instala <b>ntfy</b> gratis desde la <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" class="text-indigo-400 underline font-semibold">App Store de iOS</a>.</li>
-                <li>Toca el botón <b>+</b> para suscribirte a un tema.</li>
-                <li>Escribe el mismo topic configurado en tu <code>.env</code> (ej: <code>mi_calendario_secreto_hector</code>).</li>
-                <li>¡Listo! Recibirás avisos nativos con sonido para eventos y tareas pendientes.</li>
-              </ol>
+            <!-- Why ntfy is used on iPhone -->
+            <div class="p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/30 space-y-1.5">
+              <p class="text-xs text-indigo-200 leading-relaxed">
+                Apple restringe las notificaciones web en Safari para servidores locales o Docker. Por eso, este calendario utiliza <b>ntfy.sh</b>: una app gratuita y sin registro que hace sonar alertas en tu pantalla de bloqueo.
+              </p>
             </div>
 
-            <!-- Telegram Method -->
-            <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-              <h4 class="font-bold text-cyan-300 text-xs sm:text-sm mb-1">Opción B: Bot de Telegram</h4>
-              <ol class="list-decimal list-inside space-y-1 text-slate-400 mt-1.5 text-[11px] sm:text-xs">
-                <li>Crea un bot con <b>@BotFather</b> y copia el token.</li>
-                <li>Obtén tu chat ID con <b>@userinfobot</b>.</li>
-                <li>Inicia chat pulsando <b>/start</b> con tu bot.</li>
+            <!-- Step by step -->
+            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+              <h4 class="font-bold text-emerald-400 text-xs sm:text-sm flex items-center gap-1.5">
+                <span>✅</span> Activación en 3 sencillos pasos:
+              </h4>
+              <ol class="list-decimal list-inside space-y-2 text-slate-300 text-[11px] sm:text-xs">
+                <li>
+                  Instala la app oficial gratuita en tu iPhone:
+                  <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" class="text-indigo-400 underline font-bold ml-1">Descargar ntfy en App Store ↗</a>
+                </li>
+                <li>
+                  Abre <b>ntfy</b> en tu iPhone y suscríbete al topic:
+                  <code id="guide-topic-code" class="px-2 py-0.5 rounded bg-slate-800 text-indigo-300 font-bold font-mono">hector_calendario_2026</code>
+                </li>
+                <li>
+                  Toca el botón <b>"📲 Enviar Push de Prueba"</b> para comprobar que tu iPhone suena al instante.
+                </li>
               </ol>
             </div>
 
             <!-- Triggers Info -->
-            <div class="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-[10px] sm:text-[11px] text-indigo-200">
-              <p class="font-bold mb-0.5">⏰ Disparos automáticos:</p>
-              <p>• <b>Eventos:</b> 7 días antes (09:00), 1 día antes (09:00) y el día de inicio.</p>
+            <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[10px] sm:text-[11px] text-slate-400">
+              <p class="font-bold text-slate-200 mb-0.5">⏰ Alertas automáticas programadas:</p>
+              <p>• <b>Eventos:</b> 7 días antes (09:00 AM), 1 día antes (09:00 AM) y el día de inicio.</p>
               <p>• <b>Tareas pendientes:</b> Al vencer su fecha límite configurada.</p>
             </div>
           </div>
@@ -847,7 +885,7 @@
   <div id="toast-container" class="fixed top-4 sm:top-auto sm:bottom-5 right-3 sm:right-5 z-50 flex flex-col gap-2 max-w-sm w-[calc(100%-24px)] sm:w-full pointer-events-none"></div>
 
   <!-- Scripts with cache busters -->
-  <script src="/static/js/app.js?v=2.2.0"></script>
-  <script src="/static/js/calendar.js?v=2.2.0"></script>
+  <script src="/static/js/app.js?v=2.3.0"></script>
+  <script src="/static/js/calendar.js?v=2.3.0"></script>
 </body>
 </html>

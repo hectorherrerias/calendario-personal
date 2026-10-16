@@ -434,9 +434,45 @@ function updateSettingsUI() {
   const stInterval = document.getElementById('setting-interval-val');
 
   if (stTz) stTz.textContent = s.timezone;
-  if (stNtfy) stNtfy.textContent = s.ntfy_configured ? `🟢 Conectado (${s.ntfy_server}/${s.ntfy_topic})` : '⚪ No configurado (falta NTFY_TOPIC en .env)';
+  if (stNtfy) stNtfy.textContent = s.ntfy_configured ? `🟢 Conectado (${s.ntfy_server}/${s.ntfy_topic})` : '⚪ No configurado';
   if (stTg) stTg.textContent = s.telegram_configured ? `🟢 Conectado (Chat: ${s.telegram_chat_id})` : '⚪ Inactivo';
   if (stInterval) stInterval.textContent = `Cada ${s.scheduler_interval_minutes} minutos`;
+
+  const inputTopic = document.getElementById('input-ntfy-topic');
+  if (inputTopic && s.ntfy_topic) {
+    inputTopic.value = s.ntfy_topic;
+  }
+
+  const guideTopic = document.getElementById('guide-topic-code');
+  if (guideTopic && s.ntfy_topic) {
+    guideTopic.textContent = s.ntfy_topic;
+  }
+
+  const btnNtfyApp = document.getElementById('btn-open-ntfy-app');
+  if (btnNtfyApp && s.ntfy_topic) {
+    const server = s.ntfy_server || 'https://ntfy.sh';
+    btnNtfyApp.href = `${server.replace(/\/$/, '')}/${encodeURIComponent(s.ntfy_topic)}`;
+  }
+}
+
+async function saveNotificationSettings(e) {
+  if (e) e.preventDefault();
+  const inputTopic = document.getElementById('input-ntfy-topic');
+  if (!inputTopic) return;
+  const topic = inputTopic.value.trim();
+  if (!topic) {
+    showToast('Introduce un nombre de topic para ntfy', 'warning');
+    return;
+  }
+
+  try {
+    const res = await apiPost('/settings', { ntfy_topic: topic });
+    state.settings = res.settings;
+    updateSettingsUI();
+    showToast('Configuración guardada correctamente', 'success');
+  } catch (err) {
+    console.error('Error guardando configuración:', err);
+  }
 }
 
 // -------------------------------------------------------------

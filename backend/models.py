@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field
 
@@ -28,8 +28,8 @@ class Event(EventBase, table=True):
     notified_day: bool = Field(default=False, index=True)
     
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class EventCreate(EventBase):
     pass
@@ -79,7 +79,7 @@ class Task(TaskBase, table=True):
     notified: bool = Field(default=False, index=True)
 
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
 
 class TaskCreate(TaskBase):
@@ -117,8 +117,8 @@ class DailyNote(DailyNoteBase, table=True):
     __tablename__ = "daily_notes"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class DailyNoteCreate(DailyNoteBase):
     pass
@@ -150,4 +150,4 @@ class NotificationLog(SQLModel, table=True):
     message: str
     status: str        # "sent", "failed"
     error_details: Optional[str] = None
-    sent_at: datetime = Field(default_factory=datetime.utcnow)
+    sent_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

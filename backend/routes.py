@@ -5,7 +5,8 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select, desc, func, or_
 
-from backend.config import settings
+from pydantic import BaseModel
+from backend.config import settings, BASE_DIR
 from backend.database import get_session
 from backend.models import (
     Event, EventCreate, EventRead, EventUpdate,
@@ -34,6 +35,13 @@ def health_check():
         "server_time": get_local_now().isoformat()
     }
 
+class SettingsUpdate(BaseModel):
+    ntfy_topic: Optional[str] = None
+    ntfy_server_url: Optional[str] = None
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    timezone: Optional[str] = None
+
 @router.get("/settings", tags=["System"])
 def get_system_settings():
     """Returns application configuration status (without exposing secrets)"""
@@ -48,6 +56,60 @@ def get_system_settings():
         "app_url": settings.APP_URL,
         "local_time": get_local_now().strftime("%Y-%m-%d %H:%M:%S")
     }
+
+@router.post("/settings", tags=["System"])
+def update_system_settings(settings_in: SettingsUpdate):
+    """Updates settings in memory and persists to .env file"""
+    env_path = BASE_DIR / ".env"
+    
+    # Read existing .env lines
+    env_lines = {}
+    if env_path.exists():
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        env_lines[k.strip()] = v.strip()
+        except Exception as e:
+            logger.warning(f"Error leyendo .env existente: {e}")
+            
+    if settings_in.ntfy_topic is not None:
+        val = settings_in.ntfy_topic.strip()
+        settings.NTFY_TOPIC = val
+        env_lines["NTFY_TOPIC"] = val
+        
+    if settings_in.ntfy_server_url is not None:
+        val = settings_in.ntfy_server_url.strip() or "https://ntfy.sh"
+        settings.NTFY_SERVER_URL = val
+        env_lines["NTFY_SERVER_URL"] = val
+        
+    if settings_in.telegram_bot_token is not None:
+        val = settings_in.telegram_bot_token.strip()
+        settings.TELEGRAM_BOT_TOKEN = val
+        env_lines["TELEGRAM_BOT_TOKEN"] = val
+        
+    if settings_in.telegram_chat_id is not None:
+        val = settings_in.telegram_chat_id.strip()
+        settings.TELEGRAM_CHAT_ID = val
+        env_lines["TELEGRAM_CHAT_ID"] = val
+        
+    if settings_in.timezone is not None:
+        val = settings_in.timezone.strip() or "Europe/Madrid"
+        settings.TZ = val
+        env_lines["TZ"] = val
+
+    try:
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("# Calendario & Recordatorios Personal - Variables de Entorno\n")
+            for k, v in env_lines.items():
+                f.write(f"{k}={v}\n")
+    except Exception as e:
+        logger.error(f"Error escribiendo en .env: {e}")
+
+    logger.info("Configuración de notificaciones actualizada correctamente.")
+    return get_system_settings()
 
 @router.post("/settings/test-notification", tags=["System"])
 async def trigger_test_notification(
