@@ -42,9 +42,9 @@ def is_authenticated(request: Request) -> bool:
         if provided and hmac.compare_digest(provided, settings.API_KEY):
             return True
     if not auth_enabled():
-        # Without APP_PASSWORD the web app is open (previous behaviour);
-        # if only API_KEY is set, it protects the API but not the UI.
-        return not (settings.API_KEY and request.url.path.startswith("/api/"))
+        # Without APP_PASSWORD everything stays open (previous behaviour); the web
+        # UI itself calls /api, so API_KEY alone must not lock it out.
+        return True
     cookie = request.cookies.get(SESSION_COOKIE, "")
     return bool(cookie) and hmac.compare_digest(cookie, _session_token())
 
