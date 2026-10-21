@@ -1,15 +1,18 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI
+from urllib.parse import parse_qs
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from backend.config import settings
 from backend.database import init_db
 from backend.routes import router as api_router
 from backend.scheduler import start_scheduler, shutdown_scheduler
+from backend.security import auth_enabled, auth_middleware, check_password, login_page, login_response
 
 # Configure logging
 logging.basicConfig(
@@ -25,12 +28,16 @@ async def lifespan(app: FastAPI):
     # Initialize SQLite database
     init_db()
     logger.info("Base de datos SQLite inicializada correctamente.")
-    
+    if auth_enabled():
+        logger.info("Acceso protegido con contraseña (APP_PASSWORD).")
+    else:
+        logger.warning("APP_PASSWORD no definido: la aplicación es accesible sin contraseña.")
+
     # Start APScheduler for notifications
     start_scheduler()
-    
+
     yield
-    
+
     # Clean shutdown
     logger.info("Deteniendo scheduler y cerrando aplicación...")
     shutdown_scheduler()
@@ -43,14 +50,34 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Middleware (allows local dev if needed)
+# Access control (no-op unless APP_PASSWORD or API_KEY are set)
+app.middleware("http")(auth_middleware)
+
+# CORS Middleware (allows local dev if needed). Credentials are not allowed with
+# a wildcard origin, so other sites cannot reuse the session cookie.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/login", include_in_schema=False)
+async def show_login():
+    if not auth_enabled():
+        return RedirectResponse("/", status_code=303)
+    return login_page()
+
+@app.post("/api/login", include_in_schema=False)
+async def do_login(request: Request):
+    form = parse_qs((await request.body()).decode("utf-8", errors="ignore"))
+    password = (form.get("password") or [""])[0]
+    if check_password(password):
+        return login_response("/")
+    # Slow down brute-force attempts
+    await asyncio.sleep(1.5)
+    return login_page(error=True)
 
 # Include API Router
 app.include_router(api_router)

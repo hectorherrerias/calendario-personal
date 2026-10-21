@@ -165,6 +165,14 @@ docker compose logs -f
 
 ---
 
+## 🔐 Acceso con Contraseña y API Key (v2.3)
+
+- `APP_PASSWORD` en `.env`: la web pide la contraseña una vez por dispositivo (cookie de 1 año). Vacío = acceso libre.
+- `API_KEY` en `.env`: permite que automatizaciones (n8n, scripts) usen la API con la cabecera `X-API-Key: <valor>`.
+- Los ajustes de ntfy/Telegram guardados desde la web se persisten en `data/settings.env`, así que sobreviven a reconstrucciones del contenedor.
+- Copia automática diaria de la base de datos en `data/backups/` (`BACKUP_KEEP_DAYS`, 14 por defecto).
+- Los avisos de "en 7 días" y "mañana" ya no se envían si su día ya pasó (p. ej. al crear un evento para pasado mañana).
+
 ## 🛡️ Mantenimiento y Copias de Seguridad
 
 Para realizar una copia de seguridad de todos tus eventos, tareas, bitácoras y registros, simplemente respalda el archivo de base de datos ubicado en la carpeta `data/`:

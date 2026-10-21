@@ -1,5 +1,7 @@
 import logging
+import sqlite3
 from datetime import datetime, time, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlmodel import Session, select
@@ -119,6 +121,22 @@ async def check_pending_event_notifications():
             # TRIGGER 1: 7 días antes del inicio del evento (a las 09:00 hora local)
             # -------------------------------------------------------------
             target_7d_date = event_date - timedelta(days=7)
+            target_1d_date = event_date - timedelta(days=1)
+
+            # Events created or moved close to their date must not get stale
+            # "in 7 days" / "tomorrow" alerts: once their day has passed,
+            # those reminders are marked as done without sending them.
+            stale_flags = False
+            if not event.notified_7d and today_local > target_7d_date:
+                event.notified_7d = True
+                stale_flags = True
+            if not event.notified_1d and today_local > target_1d_date:
+                event.notified_1d = True
+                stale_flags = True
+            if stale_flags:
+                session.add(event)
+                session.commit()
+
             if not event.notified_7d:
                 if (today_local > target_7d_date or (today_local == target_7d_date and now_local.hour >= 9)) and now_local < event_local:
                     title, body, priority, tags = format_event_notification(
@@ -146,7 +164,6 @@ async def check_pending_event_notifications():
             # -------------------------------------------------------------
             # TRIGGER 2: 1 día antes del inicio del evento (a las 09:00 hora local)
             # -------------------------------------------------------------
-            target_1d_date = event_date - timedelta(days=1)
             if not event.notified_1d:
                 if (today_local > target_1d_date or (today_local == target_1d_date and now_local.hour >= 9)) and now_local < event_local:
                     title, body, priority, tags = format_event_notification(
@@ -268,6 +285,37 @@ async def check_pending_task_notifications():
                     session.add(task)
                     session.commit()
 
+def backup_database():
+    """Write one SQLite snapshot per day to data/backups and prune old ones"""
+    db_url = settings.DATABASE_URL
+    if not db_url.startswith("sqlite:///"):
+        return
+    db_path = Path(db_url.replace("sqlite:///", "", 1))
+    if not db_path.exists():
+        return
+
+    backup_dir = db_path.parent / "backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    target = backup_dir / f"calendar-{get_local_now().date().isoformat()}.db"
+    if target.exists():
+        return
+
+    try:
+        src = sqlite3.connect(str(db_path))
+        dst = sqlite3.connect(str(target))
+        with dst:
+            src.backup(dst)
+        dst.close()
+        src.close()
+        logger.info(f"Copia de seguridad creada: {target}")
+    except Exception as e:
+        logger.error(f"Error creando copia de seguridad SQLite: {e}")
+        return
+
+    backups = sorted(backup_dir.glob("calendar-*.db"))
+    for old in backups[:-max(1, settings.BACKUP_KEEP_DAYS)]:
+        old.unlink(missing_ok=True)
+
 def start_scheduler():
     """Start APScheduler in background"""
     if not scheduler.running:
@@ -276,8 +324,19 @@ def start_scheduler():
             "interval",
             minutes=settings.SCHEDULER_INTERVAL_MINUTES,
             id="check_notifications_job",
-            replace_existing=True
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True
         )
+        if settings.BACKUP_ENABLED:
+            scheduler.add_job(
+                backup_database,
+                "interval",
+                hours=1,
+                id="backup_database_job",
+                replace_existing=True,
+                next_run_time=datetime.now()
+            )
         scheduler.start()
         logger.info(f"APScheduler iniciado (intervalo: cada {settings.SCHEDULER_INTERVAL_MINUTES} minutos, TZ: {settings.TZ})")
 

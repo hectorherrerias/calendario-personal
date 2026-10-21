@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   calendario-personal:
     build:
@@ -9,12 +7,13 @@ services:
     container_name: calendario_personal
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${HOST_PORT:-3003}:8000"
     volumes:
-      # Persistent SQLite database volume
+      # Persistent SQLite database, UI settings (settings.env) and daily backups
       - ./data:/app/data
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       - TZ=${TZ:-Europe/Madrid}
       - DATABASE_URL=sqlite:////app/data/calendar.db
@@ -24,3 +23,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

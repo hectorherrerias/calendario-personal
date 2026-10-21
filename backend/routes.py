@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select, desc, func, or_
 
 from pydantic import BaseModel
-from backend.config import settings, BASE_DIR
+from backend.config import settings, OVERRIDES_FILE
 from backend.database import get_session
 from backend.models import (
     Event, EventCreate, EventRead, EventUpdate,
@@ -29,6 +29,7 @@ def health_check():
     """Health check for Docker container and monitoring"""
     return {
         "status": "ok",
+        "auth": bool(settings.APP_PASSWORD),
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "tz": settings.TZ,
@@ -59,10 +60,10 @@ def get_system_settings():
 
 @router.post("/settings", tags=["System"])
 def update_system_settings(settings_in: SettingsUpdate):
-    """Updates settings in memory and persists to .env file"""
-    env_path = BASE_DIR / ".env"
-    
-    # Read existing .env lines
+    """Updates settings in memory and persists them to data/settings.env (survives rebuilds)"""
+    env_path = OVERRIDES_FILE
+
+    # Read existing overrides
     env_lines = {}
     if env_path.exists():
         try:
@@ -102,7 +103,7 @@ def update_system_settings(settings_in: SettingsUpdate):
 
     try:
         with open(env_path, "w", encoding="utf-8") as f:
-            f.write("# Calendario & Recordatorios Personal - Variables de Entorno\n")
+            f.write("# Ajustes guardados desde la interfaz web (tienen prioridad sobre .env)\n")
             for k, v in env_lines.items():
                 f.write(f"{k}={v}\n")
     except Exception as e:
