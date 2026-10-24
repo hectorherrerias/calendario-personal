@@ -138,7 +138,8 @@ function getEventDayStatus(event, dateObj) {
   const end = parseDate(endVal);
   const endDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
   
-  if (endDate.getTime() === startDate.getTime()) {
+  // Same day, or an end before the start (bad data): treat it as a one-day event
+  if (endDate.getTime() <= startDate.getTime()) {
     return { isMultiDay: false, isStart: true, isEnd: true, isMiddle: false, dayIndex: 1, totalDays: 1 };
   }
   

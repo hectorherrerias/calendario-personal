@@ -1,9 +1,9 @@
-const CACHE_NAME = 'calendario-personal-v2.3';
+const CACHE_NAME = 'calendario-personal-v2.4';
 const ASSETS = [
   '/',
-  '/static/css/style.css?v=2.3.0',
-  '/static/js/app.js?v=2.3.0',
-  '/static/js/calendar.js?v=2.3.0',
+  '/static/css/style.css?v=2.4.0',
+  '/static/js/app.js?v=2.4.0',
+  '/static/js/calendar.js?v=2.4.0',
   '/manifest.json',
   '/static/icons/icon-192.svg',
   '/static/icons/icon-512.svg'

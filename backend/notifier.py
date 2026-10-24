@@ -110,6 +110,12 @@ async def send_telegram(
         logger.error(err)
         return {"success": False, "error": err}
 
+# After a failed automatic alert, wait before retrying the same one. Without this, a broken channel
+# was retried (and logged) every minute: ~32,000 failed log rows in a few days.
+RETRY_AFTER_SECONDS = 15 * 60
+_retry_after: Dict[tuple, float] = {}
+
+
 async def dispatch_notification(
     title: str,
     message: str,
@@ -133,9 +139,15 @@ async def dispatch_notification(
             "error": "No hay canales configurados. Define NTFY_TOPIC o TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID en .env"
         }
 
+    automatic = not trigger_type.startswith("manual")
+    key = (event_id, task_id, trigger_type)
+    now_ts = datetime.now(timezone.utc).timestamp()
+    if automatic and _retry_after.get(key, 0) > now_ts:
+        return {"success": False, "skipped": True, "error": "Reintento en espera tras un fallo reciente"}
+
     results = {}
     channel_used = []
-    
+
     if ntfy_configured:
         ntfy_res = await send_ntfy(title=title, message=message, priority=priority, tags=tags)
         results["ntfy"] = ntfy_res
@@ -150,6 +162,11 @@ async def dispatch_notification(
 
     overall_success = len(channel_used) > 0
     status = "sent" if overall_success else "failed"
+    if automatic:
+        if overall_success:
+            _retry_after.pop(key, None)
+        else:
+            _retry_after[key] = now_ts + RETRY_AFTER_SECONDS
     error_summary = "; ".join([v.get("error", "") for v in results.values() if not v.get("success")])
 
     # Save to notification history log in DB

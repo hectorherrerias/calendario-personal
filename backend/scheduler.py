@@ -316,6 +316,36 @@ def backup_database():
     for old in backups[:-max(1, settings.BACKUP_KEEP_DAYS)]:
         old.unlink(missing_ok=True)
 
+def prune_notification_logs():
+    """Keep the notification history small: failed attempts 7 days, sent alerts 1 year.
+    Events, tasks and notes are never touched. Compacts the file after a big cleanup."""
+    db_url = settings.DATABASE_URL
+    if not db_url.startswith("sqlite:///"):
+        return
+    db_path = Path(db_url.replace("sqlite:///", "", 1))
+    if not db_path.exists():
+        return
+    try:
+        conn = sqlite3.connect(str(db_path), timeout=30)
+        with conn:
+            failed = conn.execute(
+                "DELETE FROM notification_logs WHERE status != 'sent' AND sent_at < datetime('now', '-7 days')"
+            ).rowcount
+            sent = conn.execute(
+                "DELETE FROM notification_logs WHERE status = 'sent' AND sent_at < datetime('now', '-365 days')"
+            ).rowcount
+        if failed + sent:
+            logger.info(f"Historial de avisos limpiado: {failed} fallidos y {sent} enviados antiguos")
+        if failed + sent > 1000:
+            conn.execute("VACUUM")
+            # In WAL mode the file only shrinks once the WAL is checkpointed
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            logger.info("Base de datos compactada")
+        conn.close()
+    except Exception as e:
+        logger.error(f"Error limpiando el historial de avisos: {e}")
+
+
 def start_scheduler():
     """Start APScheduler in background"""
     if not scheduler.running:
@@ -327,6 +357,14 @@ def start_scheduler():
             replace_existing=True,
             max_instances=1,
             coalesce=True
+        )
+        scheduler.add_job(
+            prune_notification_logs,
+            "interval",
+            hours=24,
+            id="prune_logs_job",
+            replace_existing=True,
+            next_run_time=datetime.now() + timedelta(minutes=2)
         )
         if settings.BACKUP_ENABLED:
             scheduler.add_job(

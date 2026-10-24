@@ -17,7 +17,7 @@ load_dotenv(OVERRIDES_FILE, override=True)
 
 class Settings(BaseSettings):
     APP_NAME: str = "Calendario & Recordatorios Personal"
-    APP_VERSION: str = "2.3.0"
+    APP_VERSION: str = "2.4.0"
     DEBUG: bool = False
 
     # Timezone (Default Europe/Madrid)

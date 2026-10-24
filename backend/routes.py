@@ -176,17 +176,28 @@ def get_event(event_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Evento no encontrado")
     return event
 
+def _naive(dt: Optional[datetime]) -> Optional[datetime]:
+    return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+
+
+def ensure_end_after_start(start: Optional[datetime], end: Optional[datetime]) -> None:
+    """An event cannot end before it starts (the calendar would show it with 0 days)"""
+    if start and end and _naive(end) < _naive(start):
+        raise HTTPException(status_code=422, detail="La fecha de fin no puede ser anterior a la de inicio.")
+
+
 @router.post("/events", response_model=EventRead, status_code=status.HTTP_201_CREATED, tags=["Events"])
 def create_event(event_in: EventCreate, session: Session = Depends(get_session)):
     """Create a new event with optional multi-day range"""
     event = Event.from_orm(event_in)
-    
+
     # Keep end_time and end_date in sync for cross-compatibility
     if event.end_date and not event.end_time:
         event.end_time = event.end_date
     elif event.end_time and not event.end_date:
         event.end_date = event.end_time
-        
+    ensure_end_after_start(event.start_time, event.end_date or event.end_time)
+
     event.created_at = datetime.utcnow()
     event.updated_at = datetime.utcnow()
     
@@ -210,7 +221,11 @@ def update_event(event_id: int, event_update: EventUpdate, session: Session = De
         update_data["end_time"] = update_data["end_date"]
     elif "end_time" in update_data and "end_date" not in update_data:
         update_data["end_date"] = update_data["end_time"]
-    
+    ensure_end_after_start(
+        update_data.get("start_time", event.start_time),
+        update_data.get("end_date", event.end_date) or update_data.get("end_time", event.end_time),
+    )
+
     # If the start_time changes, reset notification flags if in the future
     if "start_time" in update_data and update_data["start_time"] != event.start_time:
         new_start = update_data["start_time"]

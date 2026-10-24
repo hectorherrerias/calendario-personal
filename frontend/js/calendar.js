@@ -139,13 +139,16 @@ function renderCalendarGrid() {
                 label = `↔ ${prefix}${label}`;
                 pillClass = 'middle-pill';
               }
-            } else if (!ev.all_day) {
-              label = `(${pad(evDate.getHours())}:${pad(evDate.getMinutes())}) ${label}`;
             }
+            // Time in a lighter tag so the title gets the space ("08:00 Reunión" instead of "(08:00) Reu…")
+            const hhmm = `${pad(evDate.getHours())}:${pad(evDate.getMinutes())}`;
+            const timeTag = !status.isMultiDay && !ev.all_day
+              ? `<span class="opacity-75 font-semibold tabular-nums shrink-0">${hhmm}</span>`
+              : '<span class="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span>';
 
             return `
-              <div class="multiday-pill ${pillClass} flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium truncate text-white shadow-sm" style="background-color: ${ev.color || '#6366f1'}cc;" title="${escapeHtml(ev.title)} ${status.isMultiDay ? `(Multidía día ${status.dayIndex} de ${status.totalDays})` : ''}">
-                <span class="w-1.5 h-1.5 rounded-full bg-white shrink-0"></span>
+              <div class="multiday-pill ${pillClass} flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium truncate text-white shadow-sm" style="background-color: ${ev.color || '#6366f1'}cc;" title="${!status.isMultiDay && !ev.all_day ? hhmm + ' · ' : ''}${escapeHtml(ev.title)} ${status.isMultiDay ? `(Multidía día ${status.dayIndex} de ${status.totalDays})` : ''}">
+                ${timeTag}
                 <span class="truncate">${label}</span>
               </div>
             `;
